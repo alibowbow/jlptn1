@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JLPT N2 단어 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            font-family: 'Noto Sans JP', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+
+        .menu {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 1.1rem;
+            min-width: 120px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #toggleAutoStudyMode {
+            background-color: #1abc9c;
+        }
+
+        #toggleAutoStudyMode:hover {
+            background-color: #16a085;
+        }
+
+
+        .section {
+            margin-top: 1rem;
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 2rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            min-height: 220px;
+            position: relative;
+            perspective: 1000px; /* For 3D effect, though transition is removed in auto mode */
+        }
+
+        .word-front, .word-back {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Default transition */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: white; /* Ensure background for covering */
+            border-radius: 10px; /* Match card's border radius */
+            backface-visibility: hidden; /* Hide the back of the element during rotation */
+        }
+
+        /* CSS to disable transition when auto mode is active */
+        .card.auto-mode-active .word-front,
+        .card.auto-mode-active .word-back {
+            transition: none !important; 
+        }
+
+        .word-back.hidden {
+            opacity: 0;
+            pointer-events: none; /* Prevent interaction when hidden */
+            transform: rotateY(180deg); /* Rotate away */
+        }
+        .word-front.hidden {
+            opacity: 0;
+            pointer-events: none; /* Prevent interaction when hidden */
+            transform: rotateY(-180deg); /* Rotate away */
+        }
+
+
+        #wordJapanese {
+            font-size: 4.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        #wordReading {
+            font-size: 4rem;
+            color: #555;
+            margin-bottom: 0.8rem;
+        }
+
+        #wordKorean {
+            font-size: 4rem;
+            color: #2c3e50;
+        }
+
+        .quiz-container, .write-container {
+            text-align: center;
+            padding: 1rem 0;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.8rem;
+            margin: 1.5rem 0;
+        }
+
+        .option {
+            padding: 0.8rem;
+            font-size: 1.1rem;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            color: #333; /* 객관식 보기 글자색 수정 */
+        }
+        .option:hover {
+            background-color: #e9e9e9;
+        }
+
+
+        #result, #writeResult {
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            font-weight: bold;
+            min-height: 40px; /* To prevent layout shift */
+        }
+
+        .score {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            color: #333;
+        }
+
+
+        #writeWord {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .answer-input {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        #userAnswer {
+            padding: 0.8rem 1.2rem;
+            font-size: 1.1rem;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            flex-grow: 1;
+            max-width: 350px;
+            outline: none;
+        }
+
+        #userAnswer:focus {
+            border-color: #2980b9;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        
+        .answer-input button {
+            flex-grow: 0; /* Prevent button from growing too much */
+        }
+
+        /* Auto 모드 속도 조절 UI 스타일 */
+        .speed-control-container {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column; /* 세로 정렬 */
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .speed-control-container label {
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .speed-control-container input[type="range"] {
+            width: 80%;
+            max-width: 250px;
+            cursor: pointer;
+        }
+        #currentSpeedLabel {
+            font-size: 0.9rem;
+            color: #333;
+            min-width: 30px; /* 숫자 변경 시 레이아웃 흔들림 방지 */
+            text-align: center;
+        }
+        .speed-label-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            .menu button {
+                font-size: 1rem;
+                padding: 0.7rem 1.2rem;
+            }
+            #wordJapanese, #writeWord {
+                font-size: 3rem;
+            }
+            #wordReading {
+                font-size: 1.6rem;
+            }
+            #wordKorean {
+                font-size: 1.5rem;
+            }
+        }
+
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 1.5rem;
+            }
+            #game-container {
+                padding: 1.5rem;
+            }
+
+            .menu {
+                gap: 0.5rem;
+            }
+            .menu button {
+                width: calc(50% - 0.25rem); /* Two buttons per row with gap */
+                margin-bottom: 0.5rem;
+                font-size: 0.9rem;
+                padding: 0.6rem 1rem;
+            }
+            /* If odd number of buttons, make the last one full width */
+            .menu button:last-child:nth-child(odd) {
+                width: 100%;
+            }
+
+
+            .card {
+                padding: 1.5rem 1rem;
+                min-height: 180px;
+            }
+
+            #wordJapanese, #writeWord {
+                font-size: 2.5rem;
+            }
+
+            #wordReading {
+                font-size: 1.3rem;
+            }
+
+            #wordKorean {
+                font-size: 1.2rem;
+            }
+
+            .options {
+                grid-template-columns: 1fr; /* Single column for options */
+                gap: 0.5rem;
+            }
+            .option {
+                font-size: 1rem;
+            }
+
+            .answer-input {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            #userAnswer {
+                max-width: none; /* Allow full width */
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            .answer-input button {
+                width: 100%;
+            }
+
+            /* Make study/quiz buttons full width on small screens */
+            #studySection button, 
+            #quizSection #nextQuiz, 
+            #writeSection #nextWriteQuiz {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+            /* Remove top margin for the first button in study section if it's full width */
+            #studySection button:first-of-type {
+                margin-top: 0;
+            }
+            .speed-control-container input[type="range"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>JLPT N2 단어 게임</h1>
+    <div id="game-container">
+        </div>
+
+    <script>
+        // words.js content
+const words = [
+    { japanese: "解明", reading: "かいめい", korean: "해명, 규명" },
+    { japanese: "概略", reading: "がいりゃく", korean: "개략, 대강" },
+    { japanese: "看過", reading: "かんか", korean: "간과" },
+    { japanese: "技倆", reading: "ぎりょう", korean: "기량" },
+    { japanese: "力量", reading: "りきりょう", korean: "역량" },
+    { japanese: "開拓", reading: "かいたく", korean: "개척" },
+    { japanese: "概念", reading: "がいねん", korean: "개념" },
+    { japanese: "基盤", reading: "きばん", korean: "기반" },
+    { japanese: "究極", reading: "きゅうきょく", korean: "궁극" },
+    { japanese: "見解", reading: "けんかい", korean: "견해" },
+    { japanese: "見識", reading: "けんしき", korean: "견식, 식견" },
+    { japanese: "高揚", reading: "こうよう", korean: "고양" },
+    { japanese: "錯覚", reading: "さっかく", korean: "착각" },
+    { japanese: "思索", reading: "しさく", korean: "사색" },
+    { japanese: "示唆", reading: "しさ", korean: "시사" },
+    { japanese: "自負", reading: "じふ", korean: "자부" },
+    { japanese: "熟考", reading: "じゅっこう", korean: "숙고" },
+    { japanese: "推敲", reading: "すいこう", korean: "퇴고" },
+    { japanese: "精通", reading: "せいつう", korean: "정통" },
+    { japanese: "専念", reading: "せんねん", korean: "전념" },
+    { japanese: "妥協", reading: "だきょう", korean: "타협" },
+    { japanese: "提唱", reading: "ていしょう", korean: "제창" },
+    { japanese: "洞察", reading: "どうさつ", korean: "통찰" },
+    { japanese: "認識", reading: "にんしき", korean: "인식" },
+    { japanese: "拍車", reading: "はくしゃ", korean: "박차" },
+    { japanese: "発足", reading: "ほっそく", korean: "발족" },
+    { japanese: "翻弄", reading: "ほんろう", korean: "번롱, 농락" },
+    { japanese: "模索", reading: "もさく", korean: "모색" },
+    { japanese: "論拠", reading: "ろんきょ", korean: "논거" },
+    { japanese: "論理", reading: "ろんり", korean: "논리" },
+    { japanese: "意図", reading: "いと", korean: "의도" },
+    { japanese: "因果", reading: "いんが", korean: "인과" },
+    { japanese: "隠蔽", reading: "いんぺい", korean: "은폐" },
+    { japanese: "謳歌", reading: "おうか", korean: "구가, 찬미" },
+    { japanese: "概ね", reading: "おおむね", korean: "대체로, 대강" },
+    { japanese: "克明", reading: "こくめい", korean: "극명" },
+    { japanese: "酷似", reading: "こくじ", korean: "흡사" },
+    { japanese: "斬新", reading: "ざんしん", korean: "참신" },
+    { japanese: "自明", reading: "じめい", korean: "자명" },
+    { japanese: "終焉", reading: "しゅうえん", korean: "종언" },
+    { japanese: "粛清", reading: "しゅくせい", korean: "숙청" },
+    { japanese: "峻厳", reading: "しゅんげん", korean: "준엄" },
+    { japanese: "精巧", reading: "せいこう", korean: "정교" },
+    { japanese: "絶大", reading: "ぜつだい", korean: "절대" },
+    { japanese: "漸次", reading: "ぜんじ", korean: "점차" },
+    { japanese: "疎遠", reading: "そえん", korean: "소원" },
+    { japanese: "多岐", reading: "たき", korean: "다기" },
+    { japanese: "打破", reading: "だは", korean: "타파" },
+    { japanese: "陳腐", reading: "ちんぷ", korean: "진부" },
+    { japanese: "痛烈", reading: "つうれつ", korean: "통렬" },
+    { japanese: "的確", reading: "てきかく", korean: "적확" },
+    { japanese: "杜撰", reading: "ずさん", korean: "허술함" },
+    { japanese: "独断", reading: "どくだん", korean: "독단" },
+    { japanese: "独創", reading: "どくそう", korean: "독창" },
+    { japanese: "破格", reading: "はかく", korean: "파격" },
+    { japanese: "白熱", reading: "はくねつ", korean: "백열" },
+    { japanese: "抜粋", reading: "ばっすい", korean: "발췌" },
+    { japanese: "汎用", reading: "はんよう", korean: "범용" },
+    { japanese: "必須", reading: "ひっす", korean: "필수" },
+    { japanese: "不朽", reading: "ふきゅう", korean: "불후" },
+    { japanese: "不審", reading: "ふしん", korean: "불심, 수상함" },
+    { japanese: "不振", reading: "ふしん", korean: "부진" },
+    { japanese: "腐敗", reading: "ふはい", korean: "부패" },
+    { japanese: "奮起", reading: "ふんき", korean: "분기" },
+    { japanese: "偏見", reading: "へんけん", korean: "편견" },
+    { japanese: "本質", reading: "ほんしつ", korean: "본질" },
+    { japanese: "慢性", reading: "まんせい", korean: "만성" },
+    { japanese: "未曾有", reading: "みぞう", korean: "미증유" },
+    { japanese: "明瞭", reading: "めいりょう", korean: "명료" },
+    { japanese: "躍進", reading: "やくしん", korean: "약진" },
+    { japanese: "誘発", reading: "ゆうはつ", korean: "유발" },
+    { japanese: "遊離", reading: "ゆうり", korean: "유리" },
+    { japanese: "隆盛", reading: "りゅうせい", korean: "융성" },
+    { japanese: "類型", reading: "るいけい", korean: "유형" },
+    { japanese: "露骨", reading: "ろこつ", korean: "노골" },
+    { japanese: "斡旋", reading: "あっせん", korean: "알선" },
+    { japanese: "画期", reading: "かっき", korean: "획기" },
+    { japanese: "窮地", reading: "きゅうち", korean: "궁지" },
+    { japanese: "均衡", reading: "きんこう", korean: "균형" },
+    { japanese: "啓発", reading: "けいはつ", korean: "계발" },
+    { japanese: "高騰", reading: "こうとう", korean: "앙등, 폭등" },
+    { japanese: "是正", reading: "ぜせい", korean: "시정" },
+    { japanese: "措置", reading: "そち", korean: "조치" },
+    { japanese: "調達", reading: "ちょうたつ", korean: "조달" },
+    { japanese: "低迷", reading: "ていめい", korean: "침체" },
+    { japanese: "動向", reading: "どうこう", korean: "동향" },
+    { japanese: "内訳", reading: "うちわけ", korean: "내역" },
+    { japanese: "破綻", reading: "はたん", korean: "파탄" },
+    { japanese: "批准", reading: "ひじゅん", korean: "비준" },
+    { japanese: "紛争", reading: "ふんそう", korean: "분쟁" },
+    { japanese: "補償", reading: "ほしょう", korean: "보상" },
+    { japanese: "擁護", reading: "ようご", korean: "옹호" },
+    { japanese: "利潤", reading: "りじゅん", korean: "이윤" },
+    { japanese: "連携", reading: "れんけい", korean: "연계" },
+    { japanese: "畏敬", reading: "いけい", korean: "외경" },
+    { japanese: "倦怠", reading: "けんたい", korean: "권태" },
+    { japanese: "困惑", reading: "こんわく", korean: "곤혹" },
+    { japanese: "自粛", reading: "じしゅく", korean: "자숙" },
+    { japanese: "憔悴", reading: "しょうすい", korean: "초췌" },
+    { japanese: "心境", reading: "しんきょう", korean: "심경" },
+    { japanese: "戦慄", reading: "せんりつ", korean: "전율" },
+    { japanese: "躊躇", reading: "ちゅうちょ", korean: "주저" },
+    { japanese: "陶酔", reading: "とうすい", korean: "도취" },
+    { japanese: "憤慨", reading: "ふんがい", korean: "분개" },
+    { japanese: "没頭", reading: "ぼっとう", korean: "몰두" },
+    { japanese: "憂鬱", reading: "ゆううつ", korean: "우울" },
+    { japanese: "落胆", reading: "らくたん", korean: "낙담" },
+    { japanese: "狼狽", reading: "ろうばい", korean: "낭패" },
+    { japanese: "介抱", reading: "かいほう", korean: "간호, 돌봄" },
+    { japanese: "駆使", reading: "くし", korean: "구사" },
+    { japanese: "傾倒", reading: "けいとう", korean: "경도" },
+    { japanese: "固執", reading: "こしつ", korean: "고집" },
+    { japanese: "錯綜", reading: "さくそう", korean: "착종" },
+    { japanese: "是認", reading: "ぜにん", korean: "시인, 인정" },
+    { japanese: "踏襲", reading: "とうしゅう", korean: "답습" },
+    { japanese: "排斥", reading: "はいせき", korean: "배척" },
+    { japanese: "払拭", reading: "ふっしょく", korean: "불식" },
+    { japanese: "補填", reading: "ほてん", korean: "보전, 보충" },
+    { japanese: "誘致", reading: "ゆうち", korean: "유치" },
+    { japanese: "凌駕", reading: "りょうが", korean: "능가" },
+    { japanese: "露呈", reading: "ろてい", korean: "노정" },
+    { japanese: "脚色", reading: "きゃくしょく", korean: "각색" },
+    { japanese: "形跡", reading: "けいせき", korean: "형적, 흔적" },
+    { japanese: "懸念", reading: "けねん", korean: "현념, 우려" },
+    { japanese: "残骸", reading: "ざんがい", korean: "잔해" },
+    { japanese: "趣旨", reading: "しゅし", korean: "취지" },
+    { japanese: "所産", reading: "しょさん", korean: "소산" },
+    { japanese: "進捗", reading: "しんちょく", korean: "진척" },
+    { japanese: "素性", reading: "すじょう", korean: "출신, 내력" },
+    { japanese: "摂理", reading: "せつり", korean: "섭리" },
+    { japanese: "兆候", reading: "ちょうこう", korean: "조짐, 징후" },
+    { japanese: "風潮", reading: "ふうちょう", korean: "풍조" },
+    { japanese: "紛失", reading: "ふんしつ", korean: "분실" },
+    { japanese: "変遷", reading: "へんせん", korean: "변천" },
+    { japanese: "網羅", reading: "もうら", korean: "망라" },
+    { japanese: "要因", reading: "よういん", korean: "요인" },
+    { japanese: "余波", reading: "よは", korean: "여파" },
+    { japanese: "糧", reading: "かて", korean: "양식, 식량" },
+    { japanese: "歪み", reading: "ゆがみ", korean: "뒤틀림, 왜곡" },
+    { japanese: "潤い", reading: "うるおい", korean: "윤기, 촉촉함" },
+    { japanese: "綻び", reading: "ほころび", korean: "터짐, 틈" },
+    { japanese: "佇まい", reading: "たたずまい", korean: "모습, 분위기" },
+    { japanese: "体裁", reading: "ていさい", korean: "체재, 겉모양" },
+    { japanese: "手際", reading: "てぎわ", korean: "솜씨, 수완" },
+    { japanese: "手本", reading: "てほん", korean: "본보기, 모범" },
+    { japanese: "名残", reading: "なごり", korean: "흔적, 잔재" },
+    { japanese: "成り行き", reading: "なりゆき", korean: "경과, 결과" },
+    { japanese: "日和", reading: "ひより", korean: "날씨, 좋은 날" },
+    { japanese: "節目", reading: "ふしめ", korean: "고비, 전환점" },
+    { japanese: "見込み", reading: "みこみ", korean: "전망, 예상" },
+    { japanese: "見晴らし", reading: "みはらし", korean: "전망" },
+    { japanese: "目処", reading: "めど", korean: "목표, 전망" },
+    { japanese: "闇", reading: "やみ", korean: "어둠, 암흑" },
+    { japanese: "揺らぎ", reading: "ゆらぎ", korean: "흔들림, 동요" },
+    { japanese: "朗報", reading: "ろうほう", korean: "낭보, 희소식" },
+    { japanese: "和やか", reading: "なごやか", korean: "화목함, 온화함" },
+    { japanese: "崇高", reading: "すうこう", korean: "숭고" },
+    { japanese: "脆弱", reading: "ぜいじゃく", korean: "취약" },
+    { japanese: "怠惰", reading: "たいだ", korean: "태만, 게으름" },
+    { japanese: "退廃", reading: "たいはい", korean: "퇴폐" },
+    { japanese: "壮大", reading: "そうだい", korean: "장대" },
+    { japanese: "純粋", reading: "じゅんすい", korean: "순수" },
+    { japanese: "柔軟", reading: "じゅうなん", korean: "유연" },
+    { japanese: "緻密", reading: "ちみつ", korean: "치밀" },
+    { japanese: "愛着", reading: "あいちゃく", korean: "애착" },
+    { japanese: "悪循環", reading: "あくじゅんかん", korean: "악순환" },
+    { japanese: "意向", reading: "いこう", korean: "의향" },
+    { japanese: "異論", reading: "いろん", korean: "이론, 이의" },
+    { japanese: "陰謀", reading: "いんぼう", korean: "음모" },
+    { japanese: "円滑", reading: "えんかつ", korean: "원활" },
+    { japanese: "応急", reading: "おうきゅう", korean: "응급" },
+    { japanese: "概況", reading: "がいきょう", korean: "개황, 대략적인 상황" },
+    { japanese: "渇望", reading: "かつぼう", korean: "갈망" },
+    { japanese: "鑑賞", reading: "かんしょう", korean: "감상" },
+    { japanese: "貫禄", reading: "かんろく", korean: "관록, 위엄" },
+    { japanese: "危惧", reading: "きぐ", korean: "위구, 염려" },
+    { japanese: "既成", reading: "きせい", korean: "기성" },
+    { japanese: "軌跡", reading: "きせき", korean: "궤적" },
+    { japanese: "脚光", reading: "きゃっこう", korean: "각광" },
+    { japanese: "虚偽", reading: "きょぎ", korean: "허위" },
+    { japanese: "虚構", reading: "きょこう", korean: "허구" },
+    { japanese: "緊迫", reading: "きんぱく", korean: "긴박" },
+    { japanese: "苦渋", reading: "くじゅう", korean: "고뇌, 괴로움" },
+    { japanese: "愚痴", reading: "ぐち", korean: "푸념, 불평" },
+    { japanese: "敬意", reading: "けいい", korean: "경의" },
+    { japanese: "経緯", reading: "けいい", korean: "경위" },
+    { japanese: "警鐘", reading: "けいしょう", korean: "경종" },
+    { japanese: "見当", reading: "けんとう", korean: "짐작, 예상" },
+    { japanese: "孤立", reading: "こりつ", korean: "고립" },
+    { japanese: "根拠", reading: "こんきょ", korean: "근거" },
+    { japanese: "自律", reading: "じりつ", korean: "자율" },
+    { japanese: "推移", reading: "すいい", korean: "추이" },
+    { japanese: "精緻", reading: "せいち", korean: "정치(함), 정교함" },
+    { japanese: "絶好", reading: "ぜっこう", korean: "절호" },
+    { japanese: "漸進", reading: "ぜんしん", korean: "점진" },
+    { japanese: "疎か", reading: "おろそか", korean: "소홀함" },
+    { japanese: "多大", reading: "たadai", korean: "막대함" },
+    { japanese: "断固", reading: "だんこ", korean: "단호히" },
+    { japanese: "煽る", reading: "あおる", korean: "부추기다, 선동하다" },
+    { japanese: "欺く", reading: "あざむく", korean: "속이다" },
+    { japanese: "嘲る", reading: "あざける", korean: "비웃다, 조롱하다" },
+    { japanese: "あやふや", reading: "あやふや", korean: "애매모호한, 불확실한" },
+    { japanese: "案じる", reading: "あんじる", korean: "걱정하다, 염려하다" },
+    { japanese: "委ねる", reading: "ゆだねる", korean: "맡기다, 위임하다" },
+    { japanese: "潤う", reading: "うるおう", korean: "윤택해지다, 촉촉해지다" },
+    { japanese: "培う", reading: "つちかう", korean: "기르다, 배양하다" },
+    { japanese: "労う", reading: "ねぎらう", korean: "노고를 위로하다" },
+    { japanese: "促す", reading: "うながす", korean: "재촉하다, 촉진하다" },
+    { japanese: "陥る", reading: "おちいる", korean: "빠지다, 함정에 빠지다" },
+    { japanese: "顧みる", reading: "かえりみる", korean: "돌아보다, 회고하다" },
+    { japanese: "掲げる", reading: "かかげる", korean: "내걸다, 게양하다" },
+    { japanese: "掻き立てる", reading: "かきたてる", korean: "북돋우다, 자극하다" },
+    { japanese: "兼ねる", reading: "かねる", korean: "겸하다, ~하기 어렵다" },
+    { japanese: "絡む", reading: "からむ", korean: "얽히다, 관계되다" },
+    { japanese: "食い止める", reading: "くいとめる", korean: "저지하다, 막다" },
+    { japanese: "こじれる", reading: "こじれる", korean: "악화되다, 꼬이다" },
+    { japanese: "凝らす", reading: "こらす", korean: "집중하다, 응축하다" },
+    { japanese: "差し控える", reading: "さしひかえる", korean: "삼가다, 자제하다" },
+    { japanese: "凌ぐ", reading: "しのぐ", korean: "견뎌내다, 능가하다" },
+    { japanese: "携わる", reading: "たずさわる", korean: "종사하다, 관계하다" },
+    { japanese: "立て替える", reading: "たてかえる", korean: "대신 지불하다" },
+    { japanese: "滞る", reading: "とどこおる", korean: "정체되다, 밀리다" },
+    { japanese: "戸惑う", reading: "とまどう", korean: "당황하다, 갈피를 못 잡다" },
+    { japanese: "なじる", reading: "なじる", korean: "나무라다, 비난하다" },
+    { japanese: "なだめる", reading: "なだめる", korean: "달래다, 진정시키다" },
+    { japanese: "賑わう", reading: "にぎわう", korean: "번성하다, 붐비다" },
+    { japanese: "抜かり", reading: "ぬかり", korean: "허점, 빠뜨린 것" },
+    { japanese: "捻じ曲げる", reading: "ねじまげる", korean: "비틀어 구부리다, 왜곡하다" },
+    { japanese: "乗り切る", reading: "のりきる", korean: "극복하다, 헤쳐나가다" },
+    { japanese: "測り知れない", reading: "はかりしれない", korean: "헤아릴 수 없다" },
+    { japanese: "弾む", reading: "はずむ", korean: "튀어 오르다, 활기띠다" },
+    { japanese: "阻む", reading: "はばむ", korean: "방해하다, 가로막다" },
+    { japanese: "見計らう", reading: "みはからう", korean: "적당한 때를 가늠하다" },
+    { japanese: "見据える", reading: "みすえる", korean: "응시하다, 직시하다" },
+    { japanese: "見せびらかす", reading: "みせびらかす", korean: "과시하다, 자랑하다" },
+    { japanese: "見抜く", reading: "みぬく", korean: "간파하다, 꿰뚫어보다" },
+    { japanese: "安易", reading: "あんい", korean: "안이함" },
+    { japanese: "遺憾", reading: "いかん", korean: "유감" },
+    { japanese: "逸材", reading: "いつざい", korean: "일재, 뛰어난 인재" },
+    { japanese: "陰湿", reading: "いんしつ", korean: "음습함" },
+    { japanese: "円満", reading: "えんまん", korean: "원만함" },
+    { japanese: "応酬", reading: "おうしゅう", korean: "응수, 주고받음" },
+    { japanese: "加担", reading: "かたん", korean: "가담" },
+    { japanese: "過密", reading: "かみつ", korean: "과밀" },
+    { japanese: "閑散", reading: "かんさん", korean: "한산함" },
+    { japanese: "危篤", reading: "きとく", korean: "위독" },
+    { japanese: "窮乏", reading: "きゅうぼう", korean: "궁핍" },
+    { japanese: "強硬", reading: "きょうこう", korean: "강경함" },
+    { japanese: "虚脱", reading: "きょだつ", korean: "허탈" },
+    { japanese: "金銭", reading: "きんせん", korean: "금전" },
+    { japanese: "愚弄", reading: "ぐろう", korean: "우롱" },
+    { japanese: "軽率", reading: "けいそつ", korean: "경솔함" },
+    { japanese: "懸命", reading: "けんめい", korean: "열심, 필사적임" },
+    { japanese: "高尚", reading: "こうしょう", korean: "고상함" },
+    { japanese: "克己", reading: "こっき", korean: "극기" },
+    { japanese: "終始", reading: "しゅうし", korean: "시종, 처음부터 끝까지" },
+    { japanese: "趣向", reading: "しゅこう", korean: "기획, 취향" },
+    { japanese: "順応", reading: "じゅんのう", korean: "순응" },
+    { japanese: "精進", reading: "しょうじん", korean: "정진" },
+    { japanese: "絶賛", reading: "ぜっさん", korean: "극찬" },
+    { japanese: "粗末", reading: "そまつ", korean: "조악함, 소홀함" },
+    { japanese: "妥当", reading: "だとう", korean: "타당함" },
+    { japanese: "提携", reading: "ていけい", korean: "제휴" },
+    { japanese: "動揺", reading: "どうよう", korean: "동요" },
+    { japanese: "難航", reading: "なんこう", korean: "난항" },
+    { japanese: "反発", reading: "はんぱつ", korean: "반발" },
+    { japanese: "悲惨", reading: "ひさん", korean: "비참함" },
+    { japanese: "不当", reading: "ふとう", korean: "부당함" },
+    { japanese: "不備", reading: "ふび", korean: "미비함" },
+    { japanese: "紛糾", reading: "ふんきゅう", korean: "분규, 뒤얽힘" },
+    { japanese: "偏重", reading: "へんちょう", korean: "편중" },
+    { japanese: "本筋", reading: "ほんすじ", korean: "본줄기, 본론" },
+    { japanese: "未練", reading: "みれん", korean: "미련" },
+    { japanese: "明朗", reading: "めいろう", korean: "명랑함" },
+    { japanese: "融通", reading: "ゆうずう", korean: "융통" },
+    { japanese: "利害", reading: "りがい", korean: "이해(득실)" },
+    { japanese: "臨機応変", reading: "りんきおうへん", korean: "임기응변" },
+    { japanese: "見舞う", reading: "みまう", korean: "문병하다, 닥치다" },
+    { japanese: "営む", reading: "いとなむ", korean: "영위하다, 경영하다" },
+    { japanese: "見送る", reading: "みおくる", korean: "배웅하다, 보류하다" },
+    { japanese: "見合わせる", reading: "みあわせる", korean: "서로 보다, 보류하다" },
+    { japanese: "曖昧", reading: "あいまい", korean: "애매함" },
+    { japanese: "萎縮", reading: "いしゅく", korean: "위축" },
+    { japanese: "逸脱", reading: "いつだつ", korean: "일탈" },
+    { japanese: "因襲", reading: "いんしゅう", korean: "인습" },
+    { japanese: "回避", reading: "かいひ", korean: "회피" },
+    { japanese: "過失", reading: "かしつ", korean: "과실" },
+    { japanese: "閑却", reading: "かんきゃく", korean: "한각(내버려둠)" },
+    { japanese: "毅然", reading: "きぜん", korean: "의연함" },
+    { japanese: "究明", reading: "きゅうめい", korean: "규명" },
+    { japanese: "教訓", reading: "きょうくん", korean: "교훈" },
+    { japanese: "懸案", reading: "けんあん", korean: "현안" },
+    { japanese: "高潔", reading: "こうけつ", korean: "고결함" },
+    { japanese: "顧慮", reading: "こりょ", korean: "고려" },
+    { japanese: "賛辞", reading: "さんじ", korean: "찬사" },
+    { japanese: "試行錯誤", reading: "しこうさくご", korean: "시행착오" },
+    { japanese: "自慢", reading: "じまん", korean: "자랑" },
+    { japanese: "償還", reading: "しょうかん", korean: "상환" },
+    { japanese: "振興", reading: "しんこう", korean: "진흥" },
+    { japanese: "粋", reading: "すい", korean: "정수, 멋" },
+    { japanese: "壮絶", reading: "そうぜつ", korean: "장렬함" },
+    { japanese: "波紋", reading: "はもん", korean: "파문" },
+    { japanese: "悲観", reading: "ひかん", korean: "비관" },
+    { japanese: "不条理", reading: "ふじょうり", korean: "부조리" },
+    { japanese: "不服", reading: "ふふく", korean: "불복" },
+    { japanese: "本望", reading: "ほんもう", korean: "본망, 본의" },
+    { japanese: "末路", reading: "まつろ", korean: "말로, 종말" },
+    { japanese: "明細", reading: "めいさい", korean: "명세" },
+    { japanese: "両立", reading: "りょうりつ", korean: "양립" },
+    { japanese: "連鎖", reading: "れんさ", korean: "연쇄" },
+    { japanese: "合致", reading: "がっち", korean: "합치하다" },
+    { japanese: "萎む", reading: "しぼむ", korean: "시들다, 오므라들다" },
+    { japanese: "募る", reading: "つのる", korean: "모집하다, 더해지다" },
+    { japanese: "踏み切る", reading: "ふみきる", korean: "단행하다, 결단하다" },
+    { japanese: "見落とす", reading: "みおとす", korean: "간과하다, 빠뜨리다" },
+    { japanese: "見放す", reading: "みはなす", korean: "외면하다, 버리다" },
+    { japanese: "愛想", reading: "あいそ", korean: "붙임성, 인상" },
+    { japanese: "悪癖", reading: "あくへき", korean: "악습" },
+    { japanese: "遺産", reading: "いさん", korean: "유산" },
+    { japanese: "一貫", reading: "いっかん", korean: "일관" },
+    { japanese: "懐柔", reading: "かいじゅう", korean: "회유" },
+    { japanese: "過度", reading: "かど", korean: "과도" },
+    { japanese: "陥落", reading: "かんらく", korean: "함락" },
+    { japanese: "危殆", reading: "きたい", korean: "위태로움" },
+    { japanese: "強欲", reading: "ごうよく", korean: "강욕, 탐욕" },
+    { japanese: "虚無", reading: "きょむ", korean: "허무" },
+    { japanese: "勤倹", reading: "きんけん", korean: "근검" },
+    { japanese: "苦境", reading: "くきょう", korean: "고경, 곤경" },
+    { japanese: "敬遠", reading: "けいえん", korean: "경원, 멀리함" },
+    { japanese: "巧妙", reading: "こうみょう", korean: "교묘함" },
+    { japanese: "困窮", reading: "こんきゅう", korean: "곤궁" },
+    { japanese: "賛同", reading: "さんどう", korean: "찬동, 동의" },
+    { japanese: "樹立", reading: "じゅりつ", korean: "수립" },
+    { japanese: "粗雑", reading: "そざつ", korean: "조잡함, 거침" },
+    { japanese: "痛感", reading: "つうかん", korean: "통감" },
+    { japanese: "投棄", reading: "とうき", korean: "투기, 내던짐" },
+    { japanese: "難解", reading: "なんかい", korean: "난해함" },
+    { japanese: "発起", reading: "ほっき", korean: "발기" },
+    { japanese: "卑劣", reading: "ひれつ", korean: "비열함" },
+    { japanese: "腐心", reading: "ふしん", korean: "고심" },
+    { japanese: "偏向", reading: "へんこう", korean: "편향" },
+    { japanese: "本領", reading: "ほんりょう", korean: "본령, 진가" },
+    { japanese: "明滅", reading: "めいめつ", korean: "명멸" },
+    { japanese: "優越", reading: "ゆうえつ", korean: "우월" },
+    { japanese: "理不尽", reading: "りふじん", korean: "불합리함" },
+    { japanese: "冷徹", reading: "れいてつ", korean: "냉철함" },
+    { japanese: "あがめる", reading: "あがめる", korean: "숭배하다, 존경하다" },
+    { japanese: "いじる", reading: "いじる", korean: "만지작거리다, 조작하다" },
+    { japanese: "うずくまる", reading: "うずくまる", korean: "웅크리다" },
+    { japanese: "うろつく", reading: "うろつく", korean: "어슬렁거리다, 배회하다" },
+    { japanese: "おだてる", reading: "おだてる", korean: "추켜세우다, 부추기다" },
+    { japanese: "かばう", reading: "かばう", korean: "감싸주다, 비호하다" },
+    { japanese: "きしむ", reading: "きしむ", korean: "삐걱거리다" },
+    { japanese: "食いしばる", reading: "くいしばる", korean: "악물다" },
+    { japanese: "さえずる", reading: "さえずる", korean: "지저귀다" },
+    { japanese: "さかのぼる", reading: "さかのぼる", korean: "거슬러 올라가다" },
+    { japanese: "仕切る", reading: "しきる", korean: "구분하다, 주관하다" },
+    { japanese: "すり替わる", reading: "すりかわる", korean: "바뀌다, 바꿔치기되다" },
+    { japanese: "だぶる", reading: "だぶる", korean: "겹치다, 중복되다" },
+    { japanese: "繕う", reading: "つくろう", korean: "수선하다, 꾸미다" },
+    { japanese: "つぶやく", reading: "つぶやく", korean: "중얼거리다" },
+    { japanese: "とどまる", reading: "とどまる", korean: "머무르다, 그치다" },
+    { japanese: "にじむ", reading: "にじむ", korean: "번지다, 배어 나오다" },
+    { japanese: "ねだる", reading: "ねだる", korean: "조르다, 보채다" },
+    { japanese: "のめり込む", reading: "のめりこむ", korean: "빠져들다, 몰두하다" },
+    { japanese: "はぐらかす", reading: "はぐらかす", korean: "얼버무리다, 따돌리다" },
+    { japanese: "はためく", reading: "はためく", korean: "펄럭이다" },
+    { japanese: "弾く", reading: "はじく", korean: "튕기다, 튀기다" },
+    { japanese: "ひしめく", reading: "ひしめく", korean: "빽빽이 들어차다, 웅성거리다" },
+    { japanese: "見せかける", reading: "みせかける", korean: "가장하다, ~인 체하다" },
+    { japanese: "見張る", reading: "みはる", korean: "망보다, 감시하다" },
+    { japanese: "愛顧", reading: "あいこ", korean: "애고, 애정 어린 보살핌" },
+    { japanese: "悪意", reading: "あくい", korean: "악의" },
+    { japanese: "威厳", reading: "いげん", korean: "위엄" },
+    { japanese: "一掃", reading: "いっそう", korean: "일소, 싹쓸이" },
+    { japanese: "活気", reading: "かっき", korean: "활기" },
+    { japanese: "既婚", reading: "きこん", korean: "기혼" },
+    { japanese: "共鳴", reading: "きょうめい", korean: "공명" },
+    { japanese: "見地", reading: "けんち", korean: "견지" },
+    { japanese: "降伏", reading: "こうふく", korean: "항복" },
+    { japanese: "混同", reading: "こんどう", korean: "혼동" },
+    { japanese: "再編", reading: "さいへん", korean: "재편" },
+    { japanese: "収束", reading: "しゅうそく", korean: "수습, 수렴" },
+    { japanese: "順風", reading: "じゅんぷう", korean: "순풍" },
+    { japanese: "奨励", reading: "しょうれい", korean: "장려" },
+    { japanese: "疎通", reading: "そつう", korean: "소통" },
+    { japanese: "達人", reading: "たつじん", korean: "달인" },
+    { japanese: "調和", reading: "ちょうわ", korean: "조화" },
+    { japanese: "弁解", reading: "べんかい", korean: "변명" },
+    { japanese: "融和", reading: "ゆうわ", korean: "융화" },
+    { japanese: "理性", reading: "りせい", korean: "이성" },
+    { japanese: "打ち明ける", reading: "うちあける", korean: "털어놓다, 고백하다" },
+    { japanese: "打ち切る", reading: "うちきる", korean: "중단하다, 잘라내다" },
+    { japanese: "打ち消す", reading: "うちけす", korean: "부정하다, 취소하다" },
+    { japanese: "打ち込む", reading: "うちこむ", korean: "열중하다, 박아 넣다" },
+    { japanese: "打ち解ける", reading: "うちとける", korean: "마음이 풀리다, 허물없어지다" },
+    { japanese: "打ち破る", reading: "うちやぶる", korean: "격파하다, 깨뜨리다" },
+    { japanese: "打ち出す", reading: "うちだす", korean: "내놓다, 발표하다" },
+    { japanese: "打ち当たる", reading: "うちあたる", korean: "부딪히다, 직면하다" },
+    { japanese: "著しい", reading: "いちじるしい", korean: "현저한, 두드러진" },
+    { japanese: "穏便", reading: "おんびん", korean: "온건한, 원만한" },
+    { japanese: "過酷", reading: "かこく", korean: "가혹한" },
+    { japanese: "気丈", reading: "きじょう", korean: "기특한, 굳센" },
+    { japanese: "厳格", reading: "げんかく", korean: "엄격한" },
+    { japanese: "甚だしい", reading: "はなはだしい", korean: "심한, 지독한" },
+    { japanese: "断念", reading: "だんねん", korean: "단념" },
+    { japanese: "手薄", reading: "てうす", korean: "부족한, 손이 모자란" },
+    { japanese: "不穏", reading: "ふおん", korean: "불온한" },
+    { japanese: "綿密", reading: "めんみつ", korean: "면밀한" },
+    { japanese: "意欲", reading: "いよく", korean: "의욕" },
+    { japanese: "営利", reading: "えいり", korean: "영리" },
+    { japanese: "汚職", reading: "おしょく", korean: "오직" },
+    { japanese: "箇条", reading: "かじょう", korean: "조항" },
+    { japanese: "飢餓", reading: "きが", korean: "기아" },
+    { japanese: "戯曲", reading: "ぎきょく", korean: "희곡" },
+    { japanese: "偽善", reading: "ぎぜん", korean: "위선" },
+    { japanese: "愚策", reading: "ぐさく", korean: "우책, 어리석은 정책" },
+    { japanese: "契機", reading: "けいき", korean: "계기" },
+    { japanese: "権威", reading: "けんい", korean: "권위" },
+    { japanese: "護衛", reading: "ごえい", korean: "호위" },
+    { japanese: "詐欺", reading: "さぎ", korean: "사기" },
+    { japanese: "惨事", reading: "さんじ", korean: "참사" },
+    { japanese: "失脚", reading: "しっきゃく", korean: "실각" },
+    { japanese: "処方箋", reading: "しょほうせん", korean: "처방전" },
+    { japanese: "真偽", reading: "しんぎ", korean: "진위" },
+    { japanese: "随筆", reading: "ずいひつ", korean: "수필" },
+    { japanese: "惰性", reading: "だせい", korean: "타성" },
+    { japanese: "達者", reading: "たっしゃ", korean: "능숙함" },
+    { japanese: "直面", reading: "ちょくめん", korean: "직면" },
+    { japanese: "徹夜", reading: "てつや", korean: "철야" },
+    { japanese: "独裁", reading: "どくさい", korean: "독재" },
+    { japanese: "反響", reading: "はんきょう", korean: "반향" },
+    { japanese: "悲痛", reading: "ひつう", korean: "비통함" },
+    { japanese: "不毛", reading: "ふもう", korean: "불모" },
+    { japanese: "変革", reading: "へんかく", korean: "변혁" },
+    { japanese: "倫理", reading: "りんり", korean: "윤리" },
+    { japanese: "庇う", reading: "かばう", korean: "감싸다, 비호하다" },
+    { japanese: "歪める", reading: "ゆがめる", korean: "일그러뜨리다, 왜곡하다" },
+    { japanese: "償う", reading: "つぐなう", korean: "보상하다, 속죄하다" },
+    { japanese: "嘆く", reading: "なげく", korean: "한탄하다, 슬퍼하다" },
+    { japanese: "見過ごす", reading: "みすごす", korean: "못 보고 지나치다, 간과하다" },
+    { japanese: "呆れる", reading: "あきれる", korean: "어이없다, 질리다" },
+    { japanese: "憧れる", reading: "あこがれる", korean: "동경하다, 갈망하다" },
+    { japanese: "あっけない", reading: "あっけない", korean: "싱겁다, 허무하다" },
+    { japanese: "あべこべ", reading: "あべこべ", korean: "거꾸로, 반대로" },
+    { japanese: "ありきたり", reading: "ありきたり", korean: "흔해빠진, 평범한" },
+    { japanese: "案の定", reading: "あんのじょう", korean: "아니나 다를까, 예상대로" },
+    { japanese: "言い張る", reading: "いいはる", korean: "우기다, 주장하다" },
+    { japanese: "うつろ", reading: "うつろ", korean: "텅 비어 있는, 공허한" },
+    { japanese: "おろそか", reading: "おろそか", korean: "소홀함" },
+    { japanese: "兼ねて", reading: "かねて", korean: "이전부터" },
+    { japanese: "片隅", reading: "かたすみ", korean: "한쪽 구석" },
+    { japanese: "頑丈", reading: "がんじょう", korean: "견고, 튼튼함" },
+    { japanese: "気掛かり", reading: "きがかり", korean: "걱정스러운" },
+    { japanese: "気兼ね", reading: "きがね", korean: "겸연쩍음, 부담스러움" },
+    { japanese: "きっぱり", reading: "きっぱり", korean: "단호히" },
+    { japanese: "くまなく", reading: "くまなく", korean: "샅샅이, 빠짐없이" },
+    { japanese: "けなす", reading: "けなす", korean: "헐뜯다, 비난하다" },
+    { japanese: "強ち", reading: "あながち", korean: "반드시 (~하지 않다)" },
+    { japanese: "潔い", reading: "いさぎよい", korean: "미련 없이 깨끗한" },
+    { japanese: "潔癖", reading: "けっぺき", korean: "결벽증" },
+    { japanese: "ごもっとも", reading: "ごもっとも", korean: "지당하다, 당연하다" },
+    { japanese: "殊に", reading: "ことに", korean: "특히" },
+    { japanese: "差し支える", reading: "さしつかえる", korean: "지장이 있다, 방해되다" },
+    { japanese: "労る", reading: "いたわる", korean: "위로하다, 보살피다" },
+    { japanese: "煩わしい", reading: "わずらわしい", korean: "귀찮은, 번거로운" },
+    { japanese: "著しく", reading: "いちじるしく", korean: "현저하게, 두드러지게" },
+    { japanese: "おっかない", reading: "おっかない", korean: "무서운, 불안한" },
+    { japanese: "きまり悪い", reading: "きまりわるい", korean: "쑥스러운, 낯뜨거운" },
+    { japanese: "気まぐれ", reading: "きまぐれ", korean: "변덕스러운" },
+    { japanese: "窮屈", reading: "きゅうくつ", korean: "답답한, 꽉 끼는" },
+    { japanese: "けなげ", reading: "けなげ", korean: "기특한, 씩씩한" },
+    { japanese: "こっそり", reading: "こっそり", korean: "몰래, 슬그머니" },
+    { japanese: "じっくり", reading: "じっくり", korean: "차분히, 곰곰이" },
+    { japanese: "しつこい", reading: "しつこい", korean: "끈질긴, 집요한" },
+    { japanese: "ずばり", reading: "ずばり", korean: "단도직입적으로, 딱 들어맞게" },
+    { japanese: "そっけない", reading: "そっけない", korean: "무뚝뚝한, 쌀쌀맞은" },
+    { japanese: "たどたどしい", reading: "たどたどしい", korean: "비틀거리는, 서툰" },
+    { japanese: "つべこべ", reading: "つべこべ", korean: "궁시렁궁시렁, 잔소리" },
+    { japanese: "てっきり", reading: "てっきり", korean: "틀림없이, 분명히" },
+    { japanese: "どんより", reading: "どんより", korean: "흐릿하게, 침울하게" },
+    { japanese: "のんき", reading: "のんき", korean: "태평스러운" },
+    { japanese: "はかどる", reading: "はかどる", korean: "진척되다, 잘 진행되다" },
+    { japanese: "はらはら", reading: "はらはら", korean: "조마조마, 아슬아슬" },
+    { japanese: "ひそひそ", reading: "ひそひそ", korean: "소곤소곤, 귓속말" },
+    { japanese: "ぶらぶら", reading: "ぶらぶら", korean: "어슬렁어슬렁, 빈둥빈둥" },
+    { japanese: "まごまご", reading: "まごまご", korean: "우물쭈물, 허둥지둥" },
+    { japanese: "まばら", reading: "まばら", korean: "드문드문한, 듬성듬성한" },
+    { japanese: "むやみに", reading: "むやみに", korean: "함부로, 무턱대고" },
+    { japanese: "めっきり", reading: "めっきり", korean: "눈에 띄게, 뚜렷이" },
+    { japanese: "やけに", reading: "やけに", korean: "몹시, 지독히" },
+    { japanese: "ゆらゆら", reading: "ゆらゆら", korean: "흔들흔들, 살랑살랑" },
+    { japanese: "わずか", reading: "わずか", korean: "조금, 약간" },
+    { japanese: "あっさり", reading: "あっさり", korean: "산뜻하게, 간단히" },
+    { japanese: "いかにも", reading: "いかにも", korean: "정말이지, 아무리 봐도" },
+    { japanese: "がっくり", reading: "がっくり", korean: "털썩, 뚝 떨어지는" },
+    { japanese: "がっしり", reading: "がっしり", korean: "튼튼하게, 다부지게" },
+    { japanese: "くよくよ", reading: "くよくよ", korean: "끙끙, 끙끙 앓는" },
+    { japanese: "じかに", reading: "じかに", korean: "직접" },
+    { japanese: "じっとり", reading: "じっとり", korean: "축축하게, 끈적끈적하게" },
+    { japanese: "すんなり", reading: "すんなり", korean: "술술, 매끄럽게" },
+    { japanese: "そそっかしい", reading: "そそっかしい", korean: "덤벙대는, 경솔한" },
+    { japanese: "たどり着く", reading: "たどりつく", korean: "겨우 도착하다" },
+    { japanese: "ちゅうちょ", reading: "ちゅうちょ", korean: "주저" },
+    { japanese: "つじつま", reading: "つじつま", korean: "앞뒤가 맞음" },
+    { japanese: "てんてこまい", reading: "てんてこまい", korean: "눈코 뜰 새 없이 바쁨" },
+    { japanese: "どっと", reading: "どっと", korean: "왈칵, 갑자기" },
+    { japanese: "ののしる", reading: "ののしる", korean: "매도하다, 욕하다" },
+    { japanese: "ばったり", reading: "ばったり", korean: "딱 마주치다, 뚝 끊기다" },
+    { japanese: "はばかる", reading: "はばかる", korean: "꺼리다, 거리끼다" },
+    { japanese: "ひそか", reading: "ひそか", korean: "은밀한, 몰래" },
+    { japanese: "ぶっきらぼう", reading: "ぶっきらぼう", korean: "퉁명스러운, 무뚝뚝한" },
+    { japanese: "まばゆい", reading: "まばゆい", korean: "눈부신" },
+    { japanese: "むなしい", reading: "むなしい", korean: "허무한, 덧없는" },
+    { japanese: "やたらに", reading: "やたらに", korean: "마구, 함부로" },
+    { japanese: "ろくに", reading: "ろくに", korean: "변변히, 제대로 (~않다)" },
+    { japanese: "温床", reading: "おんしょう", korean: "온상" },
+    { japanese: "喝采", reading: "かっさい", korean: "갈채" },
+    { japanese: "管轄", reading: "かんかつ", korean: "관할" },
+    { japanese: "疑惑", reading: "ぎわく", korean: "의혹" },
+    { japanese: "唆し", reading: "そそのかし", korean: "선동" },
+    { japanese: "怠慢", reading: "たいまん", korean: "태만" },
+    { japanese: "弾劾", reading: "だんがい", korean: "탄핵" },
+    { japanese: "老朽", reading: "ろうきゅう", korean: "노후" },
+    { japanese: "過言", reading: "かごん", korean: "과언" },
+    { japanese: "肝要", reading: "かんよう", korean: "간요, 가장 중요함" },
+    { japanese: "緊密", reading: "きんみつ", korean: "긴밀" },
+    { japanese: "興奮", reading: "こうふん", korean: "흥분" },
+    { japanese: "雑多", reading: "ざった", korean: "잡다" },
+    { japanese: "自覚", reading: "じかく", korean: "자각" },
+    { japanese: "収容", reading: "しゅうよう", korean: "수용" },
+    { japanese: "巡回", reading: "じゅんかい", korean: "순회" },
+    { japanese: "是が非でも", reading: "ぜがひでも", korean: "무슨 일이 있어도, 기어코" },
+    { japanese: "温厚", reading: "おんこう", korean: "온화함" },
+    { japanese: "加味", reading: "かみ", korean: "가미" },
+    { japanese: "窮極", reading: "きゅうきょく", korean: "궁극" },
+    { japanese: "後遺症", reading: "こういしょう", korean: "후유증" },
+    { japanese: "恣意", reading: "しい", korean: "자의" },
+    { japanese: "失態", reading: "しったい", korean: "실태" },
+    { japanese: "損得", reading: "そんとく", korean: "손익" },
+    { japanese: "醍醐味", reading: "だいごみ", korean: "진수, 묘미" },
+    { japanese: "適宜", reading: "てきぎ", korean: "적절히" },
+    { japanese: "労苦", reading: "ろうく", korean: "노고, 수고" },
+    { japanese: "懐古", reading: "かいこ", korean: "회고" },
+    { japanese: "過疎化", reading: "かそか", korean: "과소화" },
+    { japanese: "活路", reading: "かつろ", korean: "활로" },
+    { japanese: "緩和", reading: "かんわ", korean: "완화" },
+    { japanese: "奇抜", reading: "きばつ", korean: "기발함" },
+    { japanese: "愚の骨頂", reading: "ぐのこっちょう", korean: "어리석음의 극치" },
+    { japanese: "軽蔑", reading: "けいべつ", korean: "경멸" },
+    { japanese: "見送り", reading: "みおくり", korean: "배웅, 보류" },
+    { japanese: "混迷", reading: "こんめい", korean: "혼미" },
+    { japanese: "座礁", reading: "ざしょう", korean: "좌초" },
+    { japanese: "自惚れ", reading: "うぬぼれ", korean: "자만, 자부심 (부정적 뉘앙스)" },
+    { japanese: "収奪", reading: "しゅうだつ", korean: "수탈" },
+    { japanese: "脱却", reading: "だっきゃく", korean: "탈각" },
+    { japanese: "提言", reading: "ていげん", korean: "제언" },
+    { japanese: "転嫁", reading: "てんか", korean: "전가" },
+    { japanese: "疎外", reading: "そがい", korean: "소외" },
+    { japanese: "侮る", reading: "あなどる", korean: "얕보다, 업신여기다" },
+    { japanese: "あやぶむ", reading: "あやぶむ", korean: "위태롭게 여기다, 염려하다" },
+    { japanese: "思い詰める", reading: "おもいつめる", korean: "골똘히 생각하다, 너무 깊이 생각하다" },
+    { japanese: "鑑みる", reading: "かんがみる", korean: "감안하다, 고려하다" },
+    { japanese: "食い込む", reading: "くいこむ", korean: "파고들다, 침식하다" },
+    { japanese: "こじらせる", reading: "こじらせる", korean: "악화시키다, 꼬이게 하다" },
+    { japanese: "差し出す", reading: "さしだす", korean: "내밀다, 제출하다" },
+    { japanese: "しけ込む", reading: "しけこむ", korean: "잠입하다, 숨어들다" },
+    { japanese: "浸透", reading: "しんとう", korean: "침투(하다)" },
+    { japanese: "すれ違う", reading: "すれちがう", korean: "스쳐 지나가다, 엇갈리다" },
+    { japanese: "そっぽを向く", reading: "そっぽをむく", korean: "외면하다, 딴청 피우다" },
+    { japanese: "たしなめる", reading: "たしなめる", korean: "훈계하다, 나무라다" },
+    { japanese: "立ち往生", reading: "たちおうじょう", korean: "꼼짝 못하다, 정체하다" },
+    { japanese: "たわいもない", reading: "たわいもない", korean: "시시한, 어이없는" },
+    { japanese: "突き止める", reading: "つきとめる", korean: "밝혀내다, 규명하다" },
+    { japanese: "突き放す", reading: "つきはなす", korean: "내치다, 떼어놓다" },
+    { japanese: "努める", reading: "つとめる", korean: "힘쓰다, 노력하다" },
+    { japanese: "とりわけ", reading: "とりわけ", korean: "특히, 유난히" },
+    { japanese: "並びに", reading: "ならびに", korean: "~및, ~와 함께" },
+    { japanese: "ぬけぬけと", reading: "ぬけぬけと", korean: "뻔뻔스럽게" },
+    { japanese: "ねじ伏せる", reading: "ねじふせる", korean: "억지로 굴복시키다" },
+    { japanese: "乗り出す", reading: "のりだす", korean: "나서다, 착수하다" },
+    { japanese: "のろのろ", reading: "のろのろ", korean: "느릿느릿" },
+    { japanese: "はびこる", reading: "はびこる", korean: "만연하다, 널리 퍼지다" },
+    { japanese: "ひるがえる", reading: "ひるがえる", korean: "펄럭이다, 뒤집히다" },
+    { japanese: "ふりかざす", reading: "ふりかざす", korean: "휘두르다, 내세우다" },
+    { japanese: "まごつく", reading: "まごつく", korean: "우물쭈물하다, 당황하다" },
+    { japanese: "もてなす", reading: "もてなす", korean: "대접하다, 환대하다" },
+    { japanese: "もたらす", reading: "もたらす", korean: "가져오다, 초래하다" },
+    { japanese: "漏れる", reading: "もれる", korean: "새다, 빠지다" },
+    { japanese: "揺るぎない", reading: "ゆるぎない", korean: "확고한, 흔들림 없는" },
+    { japanese: "相まって", reading: "あいまって", korean: "~와 더불어, ~와 어울려" },
+    { japanese: "あえて", reading: "あえて", korean: "구태여, 굳이" },
+    { japanese: "いざこざ", reading: "いざこざ", korean: "말썽, 시비" },
+    { japanese: "うつむく", reading: "うつむく", korean: "고개 숙이다, 숙이다" },
+    { japanese: "うなだれる", reading: "うなだれる", korean: "고개 숙이다, 축 늘어뜨리다" },
+    { japanese: "がましい", reading: "がましい", korean: "~스럽다, ~하다는 듯하다" },
+    { japanese: "からっと", reading: "からっと", korean: "산뜻하게, 쾌청하게" },
+    { japanese: "がらがら", reading: "がらがら", korean: "텅 비어 있는, 삐걱거리는 소리" },
+    { japanese: "きっちり", reading: "きっちり", korean: "딱 맞게, 정확히" },
+    { japanese: "ぎゅっと", reading: "ぎゅっと", korean: "꽉, 꼬옥" },
+    { japanese: "ぐっと", reading: "ぐっと", korean: "꿀꺽, 욱 치밀어 오르는, 훨씬" },
+    { japanese: "げっそり", reading: "げっそり", korean: "홀쭉, 핼쑥" },
+    { japanese: "じわじわ", reading: "じわじわ", korean: "서서히, 꾸준히" },
+    { japanese: "じりじり", reading: "じりじり", korean: "조금씩, 천천히 (다가오는 압박 등)" },
+    { japanese: "ずらりと", reading: "ずらりと", korean: "쭉 늘어서서" },
+    { japanese: "ずるずる", reading: "ずるずる", korean: "질질, 미적미적" },
+    { japanese: "ぞろぞろ", reading: "ぞろぞろ", korean: "줄줄이, 우르르" },
+    { japanese: "だらだら", reading: "だらだら", korean: "질질, 꾸물꾸물" },
+    { japanese: "ちぐはぐ", reading: "ちぐはぐ", korean: "엇갈리는, 앞뒤가 안 맞는" },
+    { japanese: "つかつか", reading: "つかつか", korean: "성큼성큼 (소리 없이 들어오는 모양)" },
+    { japanese: "つぶさに", reading: "つぶさに", korean: "낱낱이, 상세히" },
+    { japanese: "手っ取り早い", reading: "てっとりばやい", korean: "손쉽고 빠른" },
+    { japanese: "どっさり", reading: "どっさり", korean: "잔뜩, 수북이" },
+    { japanese: "なすすべ", reading: "なすすべ", korean: "어찌할 방법 (なすすべがない: 속수무책이다)" },
+    { japanese: "にこやか", reading: "にこやか", korean: "온화한 미소로" },
+    { japanese: "ねちっこい", reading: "ねちっこい", korean: "끈적끈적한, 끈질긴" },
+    { japanese: "のっぴきならない", reading: "のっぴきならない", korean: "꼼짝할 수 없는, 피할 수 없는" },
+    { japanese: "ばかばかしい", reading: "ばかばかしい", korean: "어리석은, 터무니없는" },
+    { japanese: "はがゆい", reading: "はがゆい", korean: "애타는, 답답한" },
+    { japanese: "ひしひし", reading: "ひしひし", korean: "절실히, 뼈저리게" },
+    { japanese: "ひたむき", reading: "ひたむき", korean: "한결같은, 열중하는" },
+    { japanese: "ほろほろ", reading: "ほろほろ", korean: "뚝뚝 (눈물 등이 떨어지는 모양), 후드득" },
+    { japanese: "まちまち", reading: "まちまち", korean: "제각각, 가지각색" },
+    { japanese: "まんまと", reading: "まんまと", korean: "완전히, 멋지게" },
+    { japanese: "むっと", reading: "むっと", korean: "욱하고 화내는, 텁텁한 (냄새)" },
+    { japanese: "もろに", reading: "もろに", korean: "정통으로, 완전히" },
+    { japanese: "やたらめったら", reading: "やたらめったら", korean: "무턱대고, 닥치는 대로" },
+    { japanese: "ゆるがせ", reading: "ゆるがせ", korean: "소홀히, 등한시" },
+    { japanese: "介入", reading: "かいにゅう", korean: "개입" },
+    { japanese: "兆し", reading: "きざし", korean: "징조, 조짐" },
+    { japanese: "規範", reading: "きはん", korean: "규범" },
+    { japanese: "郷愁", reading: "きょうしゅう", korean: "향수" },
+    { japanese: "砂漠", reading: "さばく", korean: "사막" },
+    { japanese: "序盤", reading: "じょばん", korean: "초반" },
+    { japanese: "随所", reading: "ずいしょ", korean: "도처, 곳곳" },
+    { japanese: "繊維", reading: "せんい", korean: "섬유" },
+    { japanese: "船舶", reading: "せんぱく", korean: "선박" },
+    { japanese: "騒音", reading: "そうおん", korean: "소음" },
+    { japanese: "大筋", reading: "おおすじ", korean: "대강, 요지" },
+    { japanese: "担い手", reading: "にないて", korean: "담당자, 주역" },
+    { japanese: "念頭", reading: "ねんとう", korean: "염두" },
+    { japanese: "歳月", reading: "さいげつ", korean: "세월" },
+    { japanese: "背景", reading: "はいけい", korean: "배경" },
+    { japanese: "漠然", reading: "ばくぜん", korean: "막연함" },
+    { japanese: "便宜", reading: "べんぎ", korean: "편의" },
+    { japanese: "褒美", reading: "ほうび", korean: "포상, 상" },
+    { japanese: "浪費", reading: "ろうひ", korean: "낭비" },
+    { japanese: "徴収", reading: "ちょうしゅう", korean: "징수" },
+    { japanese: "偽る", reading: "いつわる", korean: "속이다, 거짓말하다" },
+    { japanese: "潤む", reading: "うるむ", korean: "눈물이 글썽이다" },
+    { japanese: "志す", reading: "こころざす", korean: "뜻을 두다, 지향하다" },
+    { japanese: "朽ちる", reading: "くちる", korean: "썩다, 쇠퇴하다" },
+    { japanese: "廃れる", reading: "すたれる", korean: "폐지되다, 스러지다" },
+    { japanese: "途絶える", reading: "とだえる", korean: "두절되다, 끊기다" },
+    { japanese: "馴染む", reading: "なじむ", korean: "친숙해지다, 익숙해지다" },
+    { japanese: "妬む", reading: "ねたむ", korean: "질투하다, 시기하다" },
+    { japanese: "催す", reading: "もよおす", korean: "개최하다, 불러일으키다" },
+    { japanese: "滅びる", reading: "ほろびる", korean: "멸망하다" },
+    { japanese: "歪む", reading: "ゆがむ", korean: "비뚤어지다, 일그러지다" },
+    { japanese: "蘇る", reading: "よみがえる", korean: "되살아나다, 소생하다" },
+    { japanese: "拙い", reading: "つたない", korean: "서투르다, 졸렬하다" },
+    { japanese: "切ない", reading: "せつない", korean: "애절하다, 안타깝다" },
+    { japanese: "脆い", reading: "もろい", korean: "부서지기 쉽다, 무르다" },
+    { japanese: "閑静", reading: "かんせい", korean: "한적함" },
+    { japanese: "頑な", reading: "かたくな", korean: "완고함" },
+    { japanese: "貧弱", reading: "ひんじゃく", korean: "빈약함" },
+    { japanese: "堅実", reading: "けんじつ", korean: "견실함" },
+    { japanese: "いっそ", reading: "いっそ", korean: "차라리, 오히려" },
+    { japanese: "がんとして", reading: "がんとして", korean: "완강하게, 딱 잘라" },
+    { japanese: "悉く", reading: "ことごとく", korean: "모조리, 전부" },
+    { japanese: "しきりに", reading: "しきりに", korean: "자꾸, 빈번히" },
+    { japanese: "どうやら", reading: "どうやら", korean: "아무래도, 어쩐지" },
+    { japanese: "もはや", reading: "もはや", korean: "이미, 이제는" },
+    { japanese: "やんわり", reading: "やんわり", korean: "부드럽게, 완곡하게" },
+    { japanese: "よほど", reading: "よほど", korean: "상당히, 어지간히" },
+    { japanese: "依然として", reading: "いぜんとして", korean: "여전히, 의연하게" },
+    { japanese: "憤り", reading: "いきどおり", korean: "분노" },
+    { japanese: "内緒", reading: "ないしょ", korean: "비밀, 내밀" },
+    { japanese: "核心", reading: "かくしん", korean: "핵심" },
+    { japanese: "丘陵", reading: "きゅうりょう", korean: "구릉" },
+    { japanese: "顧客", reading: "こきゃく", korean: "고객" },
+    { japanese: "指図", reading: "さしず", korean: "지시, 지휘" },
+    { japanese: "芝生", reading: "しばふ", korean: "잔디" },
+    { japanese: "主催", reading: "しゅさい", korean: "주최" },
+    { japanese: "手錠", reading: "てじょう", korean: "수갑" },
+    { japanese: "樹木", reading: "じゅもく", korean: "수목" },
+    { japanese: "獣", reading: "けもの", korean: "짐승" },
+    { japanese: "城跡", reading: "しろあと", korean: "성터" },
+    { japanese: "神殿", reading: "しんでん", korean: "신전" },
+    { japanese: "麓", reading: "ふもと", korean: "산기슭" },
+    { japanese: "担架", reading: "たんか", korean: "들것" },
+    { japanese: "邸宅", reading: "ていたく", korean: "저택" },
+    { japanese: "富豪", reading: "ふごう", korean: "부호" },
+    { japanese: "無言", reading: "むごん", korean: "무언, 말이 없음" },
+    { japanese: "名誉", reading: "めいよ", korean: "명예" },
+    { japanese: "面目", reading: "めんぼく", korean: "면목, 체면" },
+    { japanese: "嗜好", reading: "しこう", korean: "기호" },
+    { japanese: "暴露", reading: "ばくろ", korean: "폭로" },
+    { japanese: "ありふれる", reading: "ありふれる", korean: "흔하다, 평범하다" },
+    { japanese: "おびえる", reading: "おびえる", korean: "겁먹다, 무서워하다" },
+    { japanese: "察する", reading: "さっする", korean: "헤아리다, 살피다" },
+    { japanese: "強いる", reading: "しいる", korean: "강요하다" },
+    { japanese: "そそる", reading: "そそる", korean: "돋우다, 자아내다" },
+    { japanese: "称える", reading: "たたえる", korean: "칭송하다, 기리다" },
+    { japanese: "束ねる", reading: "たばねる", korean: "묶다, 통솔하다" },
+    { japanese: "手掛ける", reading: "てがける", korean: "다루다, 직접 하다" },
+    { japanese: "説く", reading: "とく", korean: "설파하다, 설명하다" },
+    { japanese: "途切れる", reading: "とぎれる", korean: "중단되다, 끊어지다" },
+    { japanese: "ぼやく", reading: "ぼやく", korean: "투덜거리다, 불평하다" },
+    { japanese: "滅ぼす", reading: "ほろぼす", korean: "멸망시키다" },
+    { japanese: "もがく", reading: "もがく", korean: "발버둥치다, 허우적거리다" },
+    { japanese: "揉める", reading: "もめる", korean: "분쟁이 일어나다, 옥신각신하다" },
+    { japanese: "和らぐ", reading: "やわらぐ", korean: "누그러지다, 부드러워지다" },
+    { japanese: "あらかじめ", reading: "あらかじめ", korean: "미리, 사전에" },
+    { japanese: "いやいや", reading: "いやいや", korean: "마지못해, 싫어하면서" },
+    { japanese: "うっかり", reading: "うっかり", korean: "깜빡, 무심코" },
+    { japanese: "大げさ", reading: "おおげさ", korean: "과장, 허풍" },
+    { japanese: "おおまか", reading: "おおまか", korean: "대략적, 대범함" },
+    { japanese: "仮に", reading: "かりに", korean: "만일, 임시로" },
+    { japanese: "簡潔", reading: "かんけつ", korean: "간결" },
+    { japanese: "きわめて", reading: "きわめて", korean: "극히, 지극히" },
+    { japanese: "しなやか", reading: "しなやか", korean: "유연함, 부드러움" },
+    { japanese: "強いて", reading: "しいて", korean: "굳이, 억지로" },
+    { japanese: "滑らか", reading: "なめらか", korean: "매끄러움" },
+    { japanese: "生々しい", reading: "なまなましい", korean: "생생한" },
+    { japanese: "無茶", reading: "むちゃ", korean: "터무니없음, 억지" },
+    { japanese: "無造作", reading: "むぞうさ", korean: "되는 대로 함, 손쉽게" },
+    { japanese: "もっぱら", reading: "もっぱら", korean: "오로지, 한결같이" },
+    { japanese: "棄権", reading: "きけん", korean: "기권" },
+    { japanese: "脚本", reading: "きゃくほん", korean: "각본" },
+    { japanese: "丘", reading: "おか", korean: "언덕" },
+    { japanese: "公然", reading: "こうぜん", korean: "공연 (公然)" },
+    { japanese: "公約", reading: "こうやく", korean: "공약" },
+    { japanese: "根性", reading: "こんじょう", korean: "근성" },
+    { japanese: "施行", reading: "しこう", korean: "시행" },
+    { japanese: "指紋", reading: "しもん", korean: "지문" },
+    { japanese: "砂利", reading: "じゃり", korean: "자갈" },
+    { japanese: "趣", reading: "おもむき", korean: "멋, 운치" },
+    { japanese: "正体", reading: "しょうたい", korean: "정체" },
+    { japanese: "匠", reading: "たくみ", korean: "장인, 명공" },
+    { japanese: "訴訟", reading: "そしょう", korean: "소송" },
+    { japanese: "堤防", reading: "ていぼう", korean: "제방" },
+    { japanese: "手配", reading: "てはい", korean: "수배, 준비" },
+    { japanese: "派閥", reading: "はばつ", korean: "파벌" },
+    { japanese: "煩悩", reading: "ぼんのう", korean: "번뇌" },
+    { japanese: "無念", reading: "むねん", korean: "원통함, 무념" },
+    { japanese: "無論", reading: "むろん", korean: "물론" },
+    { japanese: "猛威", reading: "もうい", korean: "맹위" },
+    { japanese: "模倣", reading: "もほう", korean: "모방" },
+    { japanese: "油断", reading: "ゆだん", korean: "방심" },
+    { japanese: "巨匠", reading: "きょしょう", korean: "거장" },
+    { japanese: "軌道", reading: "きどう", korean: "궤도" },
+    { japanese: "策略", reading: "さくゃく", korean: "책략" },
+    { japanese: "樹液", reading: "じゅえき", korean: "수액" },
+    { japanese: "あざ笑う", reading: "あざわらう", korean: "비웃다" },
+    { japanese: "言い渡す", reading: "いいわたす", korean: "선고하다, 명령하다" },
+    { japanese: "襲う", reading: "おそう", korean: "덮치다, 습격하다" },
+    { japanese: "帯びる", reading: "おびる", korean: "띠다, 머금다" },
+    { japanese: "築く", reading: "きずく", korean: "쌓다, 구축하다" },
+    { japanese: "貫く", reading: "つらぬく", korean: "관철하다, 꿰뚫다" },
+    { japanese: "閉ざす", reading: "とざす", korean: "닫다, 폐쇄하다" },
+    { japanese: "粘る", reading: "ねばる", korean: "끈질기게 버티다, 차지다" },
+    { japanese: "励む", reading: "はげむ", korean: "힘쓰다, 노력하다" },
+    { japanese: "果てる", reading: "はてる", korean: "끝나다, 죽다" },
+    { japanese: "ぼける", reading: "ぼける", korean: "흐릿해지다, 노망들다" },
+    { japanese: "見なす", reading: "みなす", korean: "간주하다, 여기다" },
+    { japanese: "操る", reading: "あやつる", korean: "조종하다, 다루다" },
+    { japanese: "委託", reading: "いたく", korean: "위탁" },
+    { japanese: "偽造", reading: "ぎぞう", korean: "위조" },
+    { japanese: "負かす", reading: "まかす", korean: "이기다, 패배시키다" },
+    { japanese: "あたかも", reading: "あたかも", korean: "마치, 흡사" },
+    { japanese: "一概に", reading: "いちがいに", korean: "일률적으로, 무조건" },
+    { japanese: "一挙に", reading: "いっきょに", korean: "일거에, 단번에" },
+    { japanese: "今更", reading: "いまさら", korean: "이제 와서" },
+    { japanese: "いやに", reading: "いやに", korean: "이상하게, 몹시" },
+    { japanese: "かろうじて", reading: "かろうじて", korean: "겨우, 가까스로" },
+    { japanese: "到底", reading: "とうてい", korean: "도저히" },
+    { japanese: "何卒", reading: "なにとぞ", korean: "아무쪼록, 부디" },
+    { japanese: "悪弊", reading: "あくへい", korean: "악폐, 나쁜 폐단" },
+    { japanese: "異彩", reading: "いさい", korean: "이채, 뛰어난 재능" },
+    { japanese: "渦", reading: "うず", korean: "소용돌이" },
+    { japanese: "原動力", reading: "げんどうりょく", korean: "원동력" },
+    { japanese: "雑踏", reading: "ざっとう", korean: "혼잡, 붐빔" },
+    { japanese: "山腹", reading: "さんぷく", korean: "산허리, 산중턱" },
+    { japanese: "使命", reading: "しめい", korean: "사명" },
+    { japanese: "人質", reading: "ひとじち", korean: "인질" },
+    { japanese: "誠意", reading: "せいい", korean: "성의" },
+    { japanese: "著作", reading: "ちょさく", korean: "저작" },
+    { japanese: "土壌", reading: "どじょう", korean: "토양" },
+    { japanese: "脳裏", reading: "のうり", korean: "뇌리, 머릿속" },
+    { japanese: "拝啓", reading: "はいけい", korean: "배계 (편지 첫머리)" },
+    { japanese: "黴菌", reading: "ばいきん", korean: "세균" },
+    { japanese: "無償", reading: "むしょう", korean: "무상" },
+    { japanese: "無断", reading: "むだん", korean: "무단" },
+    { japanese: "禁物", reading: "きんもつ", korean: "금물" },
+    { japanese: "声明", reading: "せいめい", korean: "성명" },
+    { japanese: "序列", reading: "じょれつ", korean: "서열" },
+    { japanese: "衝撃", reading: "しょうげき", korean: "충격" },
+    { japanese: "媒体", reading: "ばいたい", korean: "매체" },
+    { japanese: "根回し", reading: "ねまわし", korean: "사전 교섭, 사전 준비" },
+    { japanese: "氷河", reading: "ひょうが", korean: "빙하" },
+    { japanese: "桟橋", reading: "さんばし", korean: "잔교, 부두" },
+    { japanese: "仰ぐ", reading: "あおぐ", korean: "우러러보다, 지시를 받다" },
+    { japanese: "授ける", reading: "さずける", korean: "수여하다, 하사하다" },
+    { japanese: "悟る", reading: "さとる", korean: "깨닫다" },
+    { japanese: "費やす", reading: "ついやす", korean: "쓰다, 소비하다" },
+    { japanese: "綻びる", reading: "ほころびる", korean: "터지다, 피기 시작하다" },
+    { japanese: "愚痴る", reading: "ぐちる", korean: "푸념하다" },
+    { japanese: "潤す", reading: "うるおす", korean: "적시다, 윤택하게 하다" },
+    { japanese: "奉る", reading: "たてまつる", korean: "바치다, 모시다" },
+    { japanese: "養う", reading: "やしなう", korean: "기르다, 배양하다" },
+    { japanese: "染みる", reading: "しみる", korean: "스며들다, 배다" },
+    { japanese: "準じる", reading: "じゅんじる", korean: "준하다, 기준하다" },
+    { japanese: "怠る", reading: "おこたる", korean: "게을리하다, 소홀히하다" },
+    { japanese: "咎める", reading: "とがめる", korean: "책망하다, 탓하다" },
+    { japanese: "滅入る", reading: "めいる", korean: "기가 죽다, 우울해지다" },
+    { japanese: "ろくでもない", reading: "ろくでもない", korean: "변변찮다, 제대로 되지 않다" },
+    { japanese: "なおさら", reading: "なおさら", korean: "더욱더, 한층 더" },
+    { japanese: "てんで", reading: "てんで", korean: "전혀, 도무지" },
+    { japanese: "おちおち", reading: "おちおち", korean: "마음 놓고, 안심하고 (~못하다)" },
+    { japanese: "さぞ", reading: "さぞ", korean: "필시, 분명 (추측)" },
+    { japanese: "さほど", reading: "さほど", korean: "그다지, 그다지" },
+    { japanese: "しょせん", reading: "しょせん", korean: "어차피, 결국" },
+    { japanese: "すこぶる", reading: "すこぶる", korean: "대단히, 매우" },
+    { japanese: "そうそう", reading: "そうそう", korean: "그렇게, 쉽사리 (~않다)" },
+    { japanese: "断固として", reading: "だんことして", korean: "단호하게" },
+    { japanese: "猛烈", reading: "もうれつ", korean: "맹렬함" },
+    { japanese: "閲覧", reading: "えつらん", korean: "열람" },
+    { japanese: "縁", reading: "ふち", korean: "가장자리, 테두리" },
+    { japanese: "汚点", reading: "おてん", korean: "오점" },
+    { japanese: "塊", reading: "かたまり", korean: "덩어리" },
+    { japanese: "霞", reading: "かすみ", korean: "안개, 희미한 것" },
+    { japanese: "瓦礫", reading: "がれき", korean: "와력, 깨진 기와와 조약돌" },
+    { japanese: "愚劣", reading: "ぐれつ", korean: "우열" },
+    { japanese: "孤児", reading: "こじ", korean: "고아" },
+    { japanese: "財閥", reading: "ざいばつ", korean: "재벌" },
+    { japanese: "残高", reading: "ざんだか", korean: "잔고, 잔액" },
+    { japanese: "随一", reading: "ずいいち", korean: "제일, 으뜸" },
+    { japanese: "聖書", reading: "せいしょ", korean: "성서" },
+    { japanese: "賃金", reading: "ちんぎん", korean: "임금" },
+    { japanese: "廃墟", reading: "はいきょ", korean: "폐허" },
+    { japanese: "飽和", reading: "ほうわ", korean: "포화" },
+    { japanese: "脈", reading: "みゃく", korean: "맥" },
+    { japanese: "無縁", reading: "むえん", korean: "무연, 관계없음" },
+    { japanese: "幽霊", reading: "ゆうれい", korean: "유령" },
+    { japanese: "酪農", reading: "らくのう", korean: "낙농" },
+    { japanese: "狼", reading: "おおかみ", korean: "늑대" },
+    { japanese: "枠", reading: "わく", korean: "틀, 테두리" },
+    { japanese: "いたぶる", reading: "いたぶる", korean: "괴롭히다, 학대하다" },
+    { japanese: "受かる", reading: "うかる", korean: "합격하다" },
+    { japanese: "衰える", reading: "おとろえる", korean: "쇠하다, 쇠약해지다" },
+    { japanese: "こだわる", reading: "こだわる", korean: "구애되다, 얽매이다" },
+    { japanese: "さらう", reading: "さらう", korean: "채가다, 유괴하다" },
+    { japanese: "しがみつく", reading: "しがみつく", korean: "매달리다, 달라붙다" },
+    { japanese: "据える", reading: "すえる", korean: "설치하다, 앉히다" },
+    { japanese: "そびえる", reading: "そびえる", korean: "우뚝 솟다" },
+    { japanese: "値する", reading: "あたいする", korean: "가치가 있다" },
+    { japanese: "徹する", reading: "てっする", korean: "철저하다, 관철하다" },
+    { japanese: "はがす", reading: "はがす", korean: "벗기다, 떼다" },
+    { japanese: "ばらまく", reading: "ばらまく", korean: "흩뿌리다, 돈을 함부로 쓰다" },
+    { japanese: "またがる", reading: "またがる", korean: "걸치다, 걸터앉다" },
+    { japanese: "むさぼる", reading: "むさぼる", korean: "탐하다, 탐독하다" },
+    { japanese: "あくどい", reading: "あくどい", korean: "악랄하다, 악착같다" },
+    { japanese: "いぶかしい", reading: "いぶかしい", korean: "수상하다, 의심스럽다" },
+    { japanese: "うっとうしい", reading: "うっとうしい", korean: "성가시다, 우울하다" },
+    { japanese: "おびただしい", reading: "おびただしい", korean: "엄청나다, 막대하다" },
+    { japanese: "心地よい", reading: "ここちよい", korean: "기분 좋다" },
+    { japanese: "しぶとい", reading: "しぶとい", korean: "끈질기다, 고집이 세다" },
+    { japanese: "すばしこい", reading: "すばしこい", korean: "재빠르다, 민첩하다" },
+    { japanese: "たやすい", reading: "たやすい", korean: "용이하다, 쉽다" },
+    { japanese: "手強い", reading: "てごわい", korean: "만만찮다, 상대하기 어렵다" },
+    { japanese: "とんでもない", reading: "とんでもない", korean: "터무니없다, 당치도 않다" },
+    { japanese: "はかない", reading: "はかない", korean: "덧없다, 허무하다" },
+    { japanese: "分厚い", reading: "ぶあつい", korean: "두껍다" },
+    { japanese: "もどかしい", reading: "もどかしい", korean: "안타깝다, 답답하다" },
+    { japanese: "ややこしい", reading: "ややこしい", korean: "복잡하다, 까다롭다" },
+    { japanese: "しょっちゅう", reading: "しょっちゅう", korean: "늘, 항상, 빈번히" },
+    { japanese: "垢", reading: "あか", korean: "때, 오염" },
+    { japanese: "顎", reading: "あご", korean: "턱" },
+    { japanese: "過ち", reading: "あやまち", korean: "잘못, 실수" },
+    { japanese: "群衆", reading: "ぐんしゅう", korean: "군중" },
+    { japanese: "孤独", reading: "こどく", korean: "고독" },
+    { japanese: "魂", reading: "たましい", korean: "혼, 넋" },
+    { japanese: "鉛", reading: "なまり", korean: "납" },
+    { japanese: "仲人", reading: "なこうど", korean: "중매인" },
+    { japanese: "傍ら", reading: "かたわら", korean: "곁, 옆" },
+    { japanese: "構える", reading: "かまえる", korean: "자세를 취하다, 차리다" },
+    { japanese: "仕上げる", reading: "しあげる", korean: "마무리하다, 완성하다" },
+    { japanese: "慕う", reading: "したう", korean: "그리워하다, 사모하다" },
+    { japanese: "練る", reading: "ねる", korean: "다듬다, 반죽하다" },
+    { japanese: "施す", reading: "ほどこす", korean: "베풀다, 시행하다" },
+    { japanese: "くすぐったい", reading: "くすぐったい", korean: "간지럽다, 낯간지럽다" },
+    { japanese: "冴えない", reading: "さえない", korean: "시원찮다, 상쾌하지 않다" },
+    { japanese: "月並み", reading: "つきなみ", korean: "평범함, 진부함" },
+    { japanese: "何気ない", reading: "なにげない", korean: "아무렇지도 않은, 무심코" },
+    { japanese: "生臭い", reading: "なまぐさい", korean: "비린내 나다" },
+    { japanese: "はなはだ", reading: "はなはだ", korean: "매우, 심히" },
+    { japanese: "卑しい", reading: "いやしい", korean: "천하다, 비열하다" },
+    { japanese: "やかましい", reading: "やかましい", korean: "시끄럽다, 떠들썩하다" },
+    { japanese: "呆気ない", reading: "あっけない", korean: "어이없다, 싱겁다" },
+    { japanese: "悪徳", reading: "あくとく", korean: "악덕" },
+    { japanese: "衣装", reading: "いしょう", korean: "의상" },
+    { japanese: "緯度", reading: "いど", korean: "위도" },
+    { japanese: "沿岸", reading: "えんがん", korean: "연안" },
+    { japanese: "救援", reading: "きゅうえん", korean: "구원" },
+    { japanese: "近視", reading: "きんし", korean: "근시" },
+    { japanese: "経典", reading: "きょうてん", korean: "경전" },
+    { japanese: "原野", reading: "げんや", korean: "원야, 벌판" },
+    { japanese: "戸籍", reading: "こせき", korean: "호적" },
+    { japanese: "後悔", reading: "こうかい", korean: "후회" },
+    { japanese: "作用", reading: "さよう", korean: "작용" },
+    { japanese: "山頂", reading: "さんちょう", korean: "산정, 산꼭대기" },
+    { japanese: "色彩", reading: "しきさい", korean: "색채" },
+    { japanese: "親族", reading: "しんぞく", korean: "친족" },
+    { japanese: "大衆", reading: "たいしゅう", korean: "대중" },
+    { japanese: "弾丸", reading: "だんがん", korean: "탄환" },
+    { japanese: "著作権", reading: "ちょさくけん", korean: "저작권" },
+    { japanese: "奴隷", reading: "どれい", korean: "노예" },
+    { japanese: "破壊", reading: "はかい", korean: "파괴" },
+    { japanese: "浜辺", reading: "はまべ", korean: "해변, 바닷가" },
+    { japanese: "一息", reading: "ひといき", korean: "한숨 돌림, 단숨에" },
+    { japanese: "武装", reading: "ぶそう", korean: "무장" },
+    { japanese: "兵士", reading: "へいし", korean: "병사" },
+    { japanese: "偏西風", reading: "へんせいふう", korean: "편서풍" },
+    { japanese: "捕鯨", reading: "ほげい", korean: "포경, 고래잡이" },
+    { japanese: "捕獲", reading: "ほかく", korean: "포획" },
+    { japanese: "埋蔵", reading: "まいぞう", korean: "매장" },
+    { japanese: "侮辱", reading: "ぶじょく", korean: "모욕" },
+    { japanese: "訴える", reading: "うったえる", korean: "호소하다, 소송하다" },
+    { japanese: "脅す", reading: "おどす", korean: "위협하다, 협박하다" },
+    { japanese: "漂う", reading: "ただよう", korean: "떠돌다, 표류하다" },
+    { japanese: "逆らう", reading: "さからう", korean: "거스르다, 반항하다" },
+    { japanese: "朽ち果てる", reading: "くちはてる", korean: "완전히 썩다" },
+    { japanese: "口ずさむ", reading: "くちずさむ", korean: "읊조리다, 흥얼거리다" },
+    { japanese: "潜る", reading: "もぐる", korean: "잠수하다, 숨어들다" },
+    { japanese: "凝る", reading: "こる", korean: "열중하다, 엉기다" },
+    { japanese: "遮る", reading: "さえぎる", korean: "가로막다, 차단하다" },
+    { japanese: "滞納", reading: "たいのう", korean: "체납" },
+    { japanese: "途絶", reading: "とぜつ", korean: "두절" },
+    { japanese: "粘りつく", reading: "ねばりつく", korean: "들러붙다" },
+    { japanese: "いまだに", reading: "いまだに", korean: "아직도" },
+    { japanese: "汚らわしい", reading: "けがらわしい", korean: "더럽다, 추잡스럽다" },
+    { japanese: "おおよそ", reading: "おおよそ", korean: "대강, 대략" },
+    { japanese: "おろか", reading: "おろか", korean: "~은 고사하고, ~커녕" },
+    { japanese: "仮にも", reading: "かりにも", korean: "설령, 만에 하나" },
+    { japanese: "くれぐれも", reading: "くれぐれも", korean: "아무쪼록, 부디" },
+    { japanese: "強情", reading: "ごうじょう", korean: "고집이 셈" },
+    { japanese: "さも", reading: "さも", korean: "자못, 정말로" },
+    { japanese: "ろくろく", reading: "ろくろく", korean: "제대로, 변변히 (~않다)" },
+    { japanese: "黄金", reading: "おうごん", korean: "황금" },
+    { japanese: "賭け", reading: "かけ", korean: "내기, 도박" },
+    { japanese: "規格", reading: "きかく", korean: "규격" },
+    { japanese: "共和", reading: "きょうわ", korean: "공화" },
+    { japanese: "結晶", reading: "けっしょう", korean: "결정" },
+    { japanese: "月賦", reading: "げっぷ", korean: "월부" },
+    { japanese: "洪水", reading: "こうずい", korean: "홍수" },
+    { japanese: "碁盤", reading: "ごばん", korean: "바둑판" },
+    { japanese: "債権", reading: "さいけん", korean: "채권" },
+    { japanese: "師匠", reading: "ししょう", korean: "스승" },
+    { japanese: "始末", reading: "しまつ", korean: "시말, 처리" },
+    { japanese: "樹齢", reading: "じゅれい", korean: "수령(나무의 나이)" },
+    { japanese: "書評", reading: "しょひょう", korean: "서평" },
+    { japanese: "神聖", reading: "しんせい", korean: "신성" },
+    { japanese: "崇拝", reading: "すうはい", korean: "숭배" },
+    { japanese: "正規", reading: "せいき", korean: "정규" },
+    { japanese: "騒動", reading: "そうどう", korean: "소동" },
+    { japanese: "装飾", reading: "そうしょく", korean: "장식" },
+    { japanese: "態勢", reading: "たいせい", korean: "태세" },
+    { japanese: "天井", reading: "てんじょう", korean: "천장" },
+    { japanese: "当選", reading: "とうせん", korean: "당선" },
+    { japanese: "独占", reading: "どくせん", korean: "독점" },
+    { japanese: "念願", reading: "ねんがん", korean: "염원" },
+    { japanese: "覇気", reading: "はき", korean: "패기" },
+    { japanese: "貧血", reading: "ひんけつ", korean: "빈혈" },
+    { japanese: "舗装", reading: "ほそう", korean: "포장 (도로 등)" },
+    { japanese: "捕虜", reading: "ほりょ", korean: "포로" },
+    { japanese: "麻酔", reading: "ますい", korean: "마취" },
+    { japanese: "遺書", reading: "いしょ", korean: "유서" },
+    { japanese: "運搬", reading: "うんぱん", korean: "운반" },
+    { japanese: "沿革", reading: "えんかく", korean: "연혁" },
+    { japanese: "郷里", reading: "きょうり", korean: "향리, 고향" },
+    { japanese: "近郊", reading: "きんこう", korean: "근교" },
+    { japanese: "勤労", reading: "きんろう", korean: "근로" },
+    { japanese: "権限", reading: "けんげん", korean: "권한" },
+    { japanese: "根気", reading: "こんき", korean: "끈기" },
+    { japanese: "細工", reading: "さいく", korean: "세공" },
+    { japanese: "山脈", reading: "さんみゃく", korean: "산맥" },
+    { japanese: "私有", reading: "しゆう", korean: "사유" },
+    { japanese: "祝賀", reading: "しゅくが", korean: "축하" },
+    { japanese: "序文", reading: "じょぶん", korean: "서문" },
+    { japanese: "真珠", reading: "しんじゅ", korean: "진주" },
+    { japanese: "親善", reading: "しんぜん", korean: "친선" },
+    { japanese: "水晶", reading: "すいしょう", korean: "수정" },
+    { japanese: "精密", reading: "せいみつ", korean: "정밀" },
+    { japanese: "胎児", reading: "たいじ", korean: "태아" },
+    { japanese: "弾力", reading: "だんりょく", korean: "탄력" },
+    { japanese: "貧富", reading: "ひんぷ", korean: "빈부" },
+    { japanese: "無益", reading: "むえき", korean: "무익" },
+    { japanese: "無効", reading: "むこう", korean: "무효" },
+    { japanese: "無法", reading: "むほう", korean: "무법" },
+];
+
+    </script>
+
+    <script>
+        // script.js content
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('game-container');
+            // Dynamically create the game's HTML structure
+            container.innerHTML = `
+                <div class="menu">
+                    <button id="studyMode">학습 모드</button>
+                    <button id="quizMode">객관식 퀴즈</button>
+                    <button id="writeMode">주관식 퀴즈</button>
+                </div>
+                <div id="studySection" class="section">
+                    <div class="card">
+                        <div class="word-front">
+                            <h2 id="wordJapanese"></h2>
+                        </div>
+                        <div class="word-back hidden">
+                            <p id="wordReading"></p>
+                            <p id="wordKorean"></p>
+                        </div>
+                    </div>
+                    <div class="speed-control-container">
+                        <div class="speed-label-container">
+                            <label for="autoModeSpeed">Auto 모드 속도:</label>
+                            <span id="currentSpeedLabel">3</span>초
+                        </div>
+                        <input type="range" id="autoModeSpeed" min="1" max="5" value="3">
+                    </div>
+                    <button id="nextWord">다음 단어</button>
+                    <button id="flipCard">카드 뒤집기</button>
+                    <button id="toggleAutoStudyMode">Auto 모드 시작</button>
+                </div>
+                <div id="quizSection" class="section hidden">
+                    <div class="quiz-container">
+                        <h2 id="quizWord"></h2>
+                        <div class="options"></div>
+                        <p id="result"></p>
+                        <button id="nextQuiz" class="hidden">다음 문제</button>
+                    </div>
+                    <div class="score">
+                        맞은 개수: <span id="correctCount">0</span> / <span id="totalCount">0</span>
+                    </div>
+                </div>
+                <div id="writeSection" class="section hidden">
+                    <div class="write-container">
+                        <h2 id="writeWord"></h2>
+                        <div class="answer-input">
+                            <input type="text" id="userAnswer" placeholder="한글 뜻을 입력하세요">
+                            <button id="checkAnswer">정답 확인</button>
+                        </div>
+                        <p id="writeResult"></p>
+                        <button id="nextWriteQuiz" class="hidden">다음 문제</button>
+                    </div>
+                    <div class="score">
+                        맞은 개수: <span id="writeCorrectCount">0</span> / <span id="writeTotalCount">0</span>
+                    </div>
+                </div>
+            `;
+
+            setupEventListeners();
+            showStudyMode(); // Initialize with study mode
+        });
+
+        let currentWordIndex = 0;
+        let score = 0;
+        let totalQuestions = 0;
+
+        let autoModeInterval = null;
+        let isAutoModeRunning = false;
+        // AUTO_MODE_FRONT_DURATION and AUTO_MODE_BACK_DURATION are dynamically set based on slider
+
+        function setupEventListeners() {
+            document.getElementById('studyMode').addEventListener('click', showStudyMode);
+            document.getElementById('quizMode').addEventListener('click', showQuizMode);
+            document.getElementById('writeMode').addEventListener('click', showWriteMode);
+            
+            const nextWordButton = document.getElementById('nextWord');
+            nextWordButton.addEventListener('click', () => {
+                if(isAutoModeRunning) { // If auto mode is running, stop it first
+                    stopAutoMode();
+                }
+                showNextWord();
+            });
+
+            const flipCardButton = document.getElementById('flipCard');
+            flipCardButton.addEventListener('click', () => {
+                if(isAutoModeRunning) { // If auto mode is running, stop it first
+                    stopAutoMode();
+                }
+                flipCard();
+            });
+
+            document.getElementById('toggleAutoStudyMode').addEventListener('click', toggleAutoStudy);
+
+            const autoModeSpeedSlider = document.getElementById('autoModeSpeed');
+            const currentSpeedLabel = document.getElementById('currentSpeedLabel');
+            if (autoModeSpeedSlider && currentSpeedLabel) {
+                autoModeSpeedSlider.addEventListener('input', (event) => {
+                    currentSpeedLabel.textContent = event.target.value;
+                    // If auto mode is running, restart it with the new speed
+                    if (isAutoModeRunning) {
+                        stopAutoMode(); // Stop current timer
+                        startAutoMode(); // Restart with new speed (maintains button text etc.)
+                    }
+                });
+            }
+
+
+            document.getElementById('nextQuiz').addEventListener('click', showNextQuiz);
+            document.getElementById('checkAnswer').addEventListener('click', checkWriteAnswer);
+            document.getElementById('nextWriteQuiz').addEventListener('click', showNextWriteQuiz);
+            
+            // Add Enter key listener for 주관식 퀴즈
+            const userAnswerInput = document.getElementById('userAnswer');
+            if (userAnswerInput) {
+                 userAnswerInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const nextButton = document.getElementById('nextWriteQuiz');
+                        // If "다음 문제" button is visible, Enter triggers it
+                        if (nextButton && !nextButton.classList.contains('hidden')) {
+                            showNextWriteQuiz();
+                        } else { // Otherwise, Enter triggers "정답 확인"
+                            checkWriteAnswer();
+                        }
+                    }
+                });
+            }
+        }
+
+        function toggleAutoStudy() {
+            if (isAutoModeRunning) {
+                stopAutoMode();
+            } else {
+                startAutoMode();
+            }
+        }
+
+        function startAutoMode() {
+            if (isAutoModeRunning) return; // Already running
+
+            // Ensure study section is visible and card is ready
+            if (document.getElementById('studySection').classList.contains('hidden')) {
+                showStudyMode(); // Switch to study mode if not already
+            } else {
+                // If card back is shown, flip to front first for consistent start
+                const wordBack = document.querySelector('#studySection .word-back');
+                if (wordBack && !wordBack.classList.contains('hidden')) { 
+                    flipCard(); 
+                } else if (!document.getElementById('wordJapanese').textContent) { 
+                    // If no word is displayed, show one
+                    showNextWord(); 
+                }
+            }
+            
+            isAutoModeRunning = true;
+            document.getElementById('toggleAutoStudyMode').textContent = 'Auto 모드 중지';
+            document.getElementById('nextWord').disabled = true;
+            document.getElementById('flipCard').disabled = true;
+            document.getElementById('autoModeSpeed').disabled = true; // Disable speed slider during auto mode
+
+            // Add class to card to disable transitions
+            const cardElement = document.querySelector('#studySection .card');
+            if (cardElement) {
+                cardElement.classList.add('auto-mode-active');
+            }
+
+            let showBackNext = true; // Determines if the next action is to show back or next word
+            const selectedSpeed = parseInt(document.getElementById('autoModeSpeed').value) * 1000; // Convert seconds to milliseconds
+
+            function autoLoop() {
+                if (!isAutoModeRunning) return; // Stop if auto mode was turned off
+
+                if (showBackNext) {
+                    flipCard(); // Show back of the card
+                    showBackNext = false;
+                    autoModeInterval = setTimeout(autoLoop, selectedSpeed); // Wait for selectedSpeed
+                } else {
+                    showNextWord(); // Show next word (front of the card)
+                    showBackNext = true;
+                    autoModeInterval = setTimeout(autoLoop, selectedSpeed); // Wait for selectedSpeed
+                }
+            }
+            
+            // Initial call to start the loop
+            // Ensure the card front is showing before starting the timed flip
+            if (document.querySelector('#studySection .word-front:not(.hidden)')) { 
+                showBackNext = true; // Next action is to show back
+                autoModeInterval = setTimeout(autoLoop, selectedSpeed);
+            } else { // If back is showing or card is in an intermediate state, reset and start
+                showNextWord(); // Show a new word (front)
+                showBackNext = true;
+                autoModeInterval = setTimeout(autoLoop, selectedSpeed);
+            }
+        }
+
+        function stopAutoMode() {
+            if (autoModeInterval) {
+                clearTimeout(autoModeInterval);
+                autoModeInterval = null;
+            }
+            if (isAutoModeRunning) {
+                isAutoModeRunning = false;
+                const autoStudyButton = document.getElementById('toggleAutoStudyMode');
+                if (autoStudyButton) {
+                    autoStudyButton.textContent = 'Auto 모드 시작';
+                }
+                const nextWordButton = document.getElementById('nextWord');
+                if (nextWordButton) nextWordButton.disabled = false;
+                const flipCardButton = document.getElementById('flipCard');
+                if (flipCardButton) flipCardButton.disabled = false;
+                const autoModeSpeedSlider = document.getElementById('autoModeSpeed');
+                if (autoModeSpeedSlider) autoModeSpeedSlider.disabled = false; // Enable speed slider
+
+                // Remove class from card to re-enable transitions
+                const cardElement = document.querySelector('#studySection .card');
+                if (cardElement) {
+                    cardElement.classList.remove('auto-mode-active');
+                }
+            }
+        }
+
+        function showStudyMode() {
+            stopAutoMode(); // Stop auto mode if it's running
+            hideAllSections();
+            document.getElementById('studySection').classList.remove('hidden');
+            showNextWord(); // Display the first word
+        }
+
+        function showNextWord() {
+            currentWordIndex = Math.floor(Math.random() * words.length);
+            const word = words[currentWordIndex];
+            document.getElementById('wordJapanese').textContent = word.japanese;
+            document.getElementById('wordReading').textContent = `${word.reading}`;
+            document.getElementById('wordKorean').textContent = `${word.korean}`;
+            
+            // Ensure card front is shown and back is hidden
+            document.querySelector('#studySection .word-front').classList.remove('hidden');
+            document.querySelector('#studySection .word-back').classList.add('hidden');
+        }
+
+        function flipCard() {
+            document.querySelector('#studySection .word-front').classList.toggle('hidden');
+            document.querySelector('#studySection .word-back').classList.toggle('hidden');
+        }
+
+        function showQuizMode() {
+            stopAutoMode(); // Stop auto mode if it's running
+            hideAllSections();
+            document.getElementById('quizSection').classList.remove('hidden');
+            score = 0;
+            totalQuestions = 0;
+            updateScore();
+            showNextQuiz();
+        }
+
+        function showNextQuiz() {
+            const optionsContainer = document.querySelector('#quizSection .options');
+            optionsContainer.innerHTML = ''; // Clear previous options
+            document.getElementById('result').textContent = '';
+            document.getElementById('nextQuiz').classList.add('hidden');
+
+            currentWordIndex = Math.floor(Math.random() * words.length);
+            const correctWord = words[currentWordIndex];
+            document.getElementById('quizWord').textContent = correctWord.japanese;
+
+            const answers = getRandomAnswers(correctWord);
+            answers.forEach(answer => {
+                const button = document.createElement('button');
+                button.textContent = answer.korean;
+                button.classList.add('option');
+                button.addEventListener('click', () => checkAnswer(button, answer.korean, correctWord));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function showWriteMode() {
+            stopAutoMode(); // Stop auto mode if it's running
+            hideAllSections();
+            document.getElementById('writeSection').classList.remove('hidden');
+            score = 0;
+            totalQuestions = 0;
+            updateWriteScore();
+            showNextWriteQuiz();
+        }
+
+        function showNextWriteQuiz() {
+            currentWordIndex = Math.floor(Math.random() * words.length);
+            const word = words[currentWordIndex];
+            document.getElementById('writeWord').textContent = word.japanese;
+            const userAnswerInput = document.getElementById('userAnswer');
+            if (userAnswerInput) userAnswerInput.value = ''; // Clear previous answer
+            document.getElementById('writeResult').textContent = '';
+            document.getElementById('nextWriteQuiz').classList.add('hidden');
+            if (userAnswerInput) userAnswerInput.focus(); // Focus on input field
+        }
+
+        function checkWriteAnswer() {
+            const userAnswerInput = document.getElementById('userAnswer');
+            if (!userAnswerInput) return;
+
+            const userAnswer = userAnswerInput.value.trim();
+            const correctAnswer = words[currentWordIndex].korean;
+            const reading = words[currentWordIndex].reading;
+            const resultElement = document.getElementById('writeResult');
+
+            if (userAnswer === correctAnswer) {
+                resultElement.textContent = `정답입니다! (읽는 법: ${reading})`;
+                resultElement.style.color = '#4CAF50'; // Green for correct
+                score++;
+            } else {
+                resultElement.textContent = `틀렸습니다. 정답은 "${correctAnswer}" (읽는 법: ${reading}) 입니다.`;
+                resultElement.style.color = '#f44336'; // Red for incorrect
+            }
+            totalQuestions++;
+            updateWriteScore();
+            document.getElementById('nextWriteQuiz').classList.remove('hidden');
+        }
+
+        function hideAllSections() {
+            document.getElementById('studySection').classList.add('hidden');
+            document.getElementById('quizSection').classList.add('hidden');
+            document.getElementById('writeSection').classList.add('hidden');
+        }
+
+        function updateScore() {
+            document.getElementById('correctCount').textContent = score;
+            document.getElementById('totalCount').textContent = totalQuestions;
+        }
+
+        function updateWriteScore() {
+            document.getElementById('writeCorrectCount').textContent = score;
+            document.getElementById('writeTotalCount').textContent = totalQuestions;
+        }
+
+        function getRandomAnswers(correctWord) {
+            const answers = [{ korean: correctWord.korean, reading: correctWord.reading }];
+            const usedIndices = new Set([currentWordIndex]); // Keep track of used words to avoid duplicates
+
+            while (answers.length < 4) { // We need 3 more incorrect answers
+                const randomIndex = Math.floor(Math.random() * words.length);
+                if (!usedIndices.has(randomIndex)) { // Ensure the word is not the correct one or already picked
+                    const randomWord = words[randomIndex];
+                    answers.push({ korean: randomWord.korean, reading: randomWord.reading });
+                    usedIndices.add(randomIndex);
+                }
+            }
+            return shuffleArray(answers); // Shuffle the answers
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+            return array;
+        }
+
+        function checkAnswer(buttonElement, selectedAnswer, correctWord) {
+            const optionButtons = document.querySelectorAll('#quizSection .option');
+            const resultElement = document.getElementById('result');
+            
+            // Disable all option buttons after an answer is selected
+            optionButtons.forEach(option => option.disabled = true); 
+            
+            if (selectedAnswer === correctWord.korean) {
+                buttonElement.style.backgroundColor = '#4CAF50'; // Green for correct
+                resultElement.innerHTML = `정답입니다!<br><span style="font-size: 0.9em; color: #666;">읽는 법: ${correctWord.reading}</span>`;
+                resultElement.style.color = '#4CAF50';
+                score++;
+            } else {
+                buttonElement.style.backgroundColor = '#f44336'; // Red for incorrect
+                // Highlight the correct answer
+                optionButtons.forEach(option => { 
+                    if (option.textContent === correctWord.korean) {
+                        option.style.backgroundColor = '#4CAF50';
+                    }
+                });
+                resultElement.innerHTML = `틀렸습니다.<br><span style="font-size: 0.9em; color: #666;">읽는 법: ${correctWord.reading}</span>`;
+                resultElement.style.color = '#f44336';
+            }
+            
+            totalQuestions++;
+            updateScore();
+            document.getElementById('nextQuiz').classList.remove('hidden'); // Show "다음 문제" button
+        }
+    </script>
+</body>
+</html>
